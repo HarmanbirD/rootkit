@@ -150,6 +150,7 @@ static int wait_port_knock_handler(struct fsm_context *context, struct fsm_error
             return -1;
         }
 
+        usleep(150000);
         printf("sending string\n");
         send_string(ctx->args->ip_info, "yY");
     }

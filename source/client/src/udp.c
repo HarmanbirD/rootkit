@@ -70,6 +70,7 @@ uint32_t get_local_ip(uint32_t dest_ip)
 
 int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
 {
+    usleep(150000);
     char packet[4096];
     int  sock;
     memset(packet, 0, sizeof(packet));
@@ -168,8 +169,8 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
         if (ip->protocol != IPPROTO_UDP)
             continue;
 
-        // if (ip_ctx.local_ip != 0 && ip->daddr != ip_ctx.local_ip)
-        //     continue;
+        if (ip_ctx.local_ip != 0 && ip->daddr != ip_ctx.local_ip)
+            continue;
 
         struct udphdr *udp =
             (struct udphdr *)(buffer + (ip->ihl * 4));
@@ -386,11 +387,7 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
 
     uint64_t len;
     if (recv_u64_from_u16_be(ip_ctx, &len) != 0)
-    {
-
-        printf("recckmasklmca\n");
         return -1;
-    }
 
     printf("Len: %zd\n", len);
 

