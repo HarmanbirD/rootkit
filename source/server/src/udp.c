@@ -69,6 +69,7 @@ uint32_t get_local_ip(uint32_t dest_ip)
 
 int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
 {
+    usleep(15000);
     char packet[4096];
     int  sock;
     memset(packet, 0, sizeof(packet));
@@ -119,14 +120,16 @@ int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
     inet_ntop(AF_INET, &ip_ctx.local_ip, local_ip_str, sizeof(local_ip_str));
     inet_ntop(AF_INET, &ip_ctx.dest_ip, dest_ip_str, sizeof(dest_ip_str));
 
-    printf("ip_info {\n");
-    printf("  local_ip  : %s\n", local_ip_str);
-    printf("  dest_ip   : %s\n", dest_ip_str);
-    printf("  src_port  : %d\n", ip_ctx.src_port);
-    printf("  dest_port : %d\n", ip_ctx.dest_port);
+    // printf("ip_info {\n");
+    // printf("  local_ip  : %s\n", local_ip_str);
+    // printf("  dest_ip   : %s\n", dest_ip_str);
+    // printf("  src_port  : %d\n", ip_ctx.src_port);
+    // printf("  dest_port : %d\n", ip_ctx.dest_port);
     printf("  payload   : %d\n", sec_payload);
-    printf("}\n");
-    usleep(150000);
+    // printf("}\n");
+
+    close(sock);
+
     return 0;
 }
 
@@ -179,12 +182,8 @@ void print_udp_packet(unsigned char *buffer, ssize_t len)
 
 int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
 {
-    printf("in receive message\n");
     if (!sec_payload)
-    {
-        printf("no sec payload\n");
         return 0;
-    }
 
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (sock < 0)
@@ -226,7 +225,7 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
 
         printf("Recieved: %d\n", ntohs(ip->id));
 
-        print_udp_packet(buffer, len);
+        // print_udp_packet(buffer, len);
 
         close(sock);
         return 1;
@@ -334,7 +333,6 @@ static int recv_u16(struct ip_info ip_ctx, uint16_t *out)
 
 static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
 {
-    printf("recv_u64_from_u16_be\n");
     uint16_t w0, w1, w2, w3;
 
     if (recv_message(ip_ctx, &w0) != 1)
@@ -365,7 +363,7 @@ static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
     *out = ((uint64_t)w0 << 48) | ((uint64_t)w1 << 32) | ((uint64_t)w2 << 16) |
            ((uint64_t)w3 << 0);
 
-    printf("NUMBERS: %d %d %d %d\n", w0, w1, w2, w3);
+    // printf("NUMBERS: %d %d %d %d\n", w0, w1, w2, w3);
     *out = (uint64_t)w3;
 
     return 0;
@@ -440,26 +438,14 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
     inet_ntop(AF_INET, &ip_ctx.local_ip, local_ip_str, sizeof(local_ip_str));
     inet_ntop(AF_INET, &ip_ctx.dest_ip, dest_ip_str, sizeof(dest_ip_str));
 
-    printf("ip_info {\n");
-    printf("  local_ip  : %s\n", local_ip_str);
-    printf("  dest_ip   : %s\n", dest_ip_str);
-    printf("  src_port  : %d\n", ip_ctx.src_port);
-    printf("  dest_port : %d\n", ip_ctx.dest_port);
-    printf("}\n");
-
     *out_str = NULL;
 
-    printf("Waiting for len\n");
     uint64_t len;
     if (recv_u64_from_u16_be(ip_ctx, &len) != 0)
         return -1;
 
-    printf("recieved len: %zd\n", len);
     if (len > (1024ull * 1024ull * 64ull))
-    {
-        printf("Len is wrong!!!");
         return -1;
-    }
 
     char *buf = (char *)malloc((size_t)len + 1);
     if (!buf)
@@ -478,7 +464,6 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
     buf[len] = '\0';
     *out_str = buf;
 
-    printf("Recieved frm akad: %s\n", *out_str);
     return 0;
 }
 

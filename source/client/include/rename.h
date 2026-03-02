@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +34,10 @@ typedef struct comm_ref
     int         pid; // optional, just to show an example PID
 } comm_ref_t;
 
-int rename_process(void);
+static char  *g_argv_start = NULL;
+static size_t g_argv_size  = 0;
+
+int  rename_process(void);
+void init_process_title(int argc, char **argv);
 
 #endif // RENAME_H

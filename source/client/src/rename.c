@@ -60,38 +60,50 @@ static unsigned char *try_read_bytes(const char *path, size_t *out_len)
     if (!f)
         return NULL;
 
-    if (fseek(f, 0, SEEK_END) != 0)
-    {
-        fclose(f);
-        return NULL;
-    }
-    long sz = ftell(f);
-    if (sz < 0)
-    {
-        fclose(f);
-        return NULL;
-    }
-    rewind(f);
-
-    unsigned char *buf = (unsigned char *)malloc((size_t)sz + 1);
+    size_t         cap = 256;
+    size_t         len = 0;
+    unsigned char *buf = malloc(cap + 1);
     if (!buf)
     {
         fclose(f);
         return NULL;
     }
 
-    size_t got = fread(buf, 1, (size_t)sz, f);
-    fclose(f);
-
-    if (got != (size_t)sz && ferror(f))
+    for (;;)
     {
-        free(buf);
-        return NULL;
+        if (len == cap)
+        {
+            size_t         new_cap = cap * 2;
+            unsigned char *nb      = realloc(buf, new_cap + 1);
+            if (!nb)
+            {
+                free(buf);
+                fclose(f);
+                return NULL;
+            }
+            buf = nb;
+            cap = new_cap;
+        }
+
+        size_t n = fread(buf + len, 1, cap - len, f);
+        len += n;
+
+        if (n == 0)
+        {
+            if (ferror(f))
+            {
+                free(buf);
+                fclose(f);
+                return NULL;
+            }
+            break; // EOF
+        }
     }
 
-    buf[got] = '\0';
+    fclose(f);
+    buf[len] = '\0'; // sentinel
     if (out_len)
-        *out_len = got;
+        *out_len = len;
     return buf;
 }
 
@@ -131,7 +143,7 @@ static void record_free(proc_record_t *r)
     memset(r, 0, sizeof(*r));
 }
 
-void proc_records_free(proc_records_t *rs)
+static void proc_records_free(proc_records_t *rs)
 {
     if (!rs)
         return;
@@ -302,13 +314,18 @@ static int cmp_comm_ref(const void *a, const void *b)
 
 static int most_common_comm(const proc_records_t *rs,
                             const char          **out_comm,
+                            const char          **out_cmdline,
                             size_t               *out_count,
                             int                  *out_example_pid)
 {
     if (!rs || !out_comm || !out_count)
         return -1;
 
-    *out_comm  = NULL;
+    *out_comm = NULL;
+
+    if (out_cmdline)
+        *out_cmdline = NULL;
+
     *out_count = 0;
     if (out_example_pid)
         *out_example_pid = -1;
@@ -379,6 +396,19 @@ static int most_common_comm(const proc_records_t *rs,
     if (out_example_pid)
         *out_example_pid = best_pid;
 
+    if (out_cmdline)
+    {
+        *out_cmdline = NULL;
+        for (size_t i = 0; i < rs->len; i++)
+        {
+            if (rs->items[i].pid == best_pid)
+            {
+                *out_cmdline = rs->items[i].cmdline;
+                break;
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -395,8 +425,8 @@ static void print_self_info(const proc_records_t *rs)
             printf("\n=== Current Process ===\n");
             printf("PID:     %d\n", r->pid);
             printf("comm:    %s\n", r->comm ? r->comm : "(null)");
-            // printf("argv0:   %s\n", r->argv0 ? r->argv0 : "(null)");
-            // printf("cmdline: %s\n", r->cmdline ? r->cmdline : "(null)");
+            printf("argv0:   %s\n", r->argv0 ? r->argv0 : "(null)");
+            printf("cmdline: %s\n", r->cmdline ? r->cmdline : "(null)");
             printf("exe:     %s\n", r->exe ? r->exe : "(null)");
             return;
         }
@@ -440,6 +470,35 @@ static void print_self_comm_now(void)
     fclose(f);
 }
 
+void init_process_title(int argc, char **argv)
+{
+    if (argc <= 0 || !argv || !argv[0])
+        return;
+
+    g_argv_start = argv[0];
+
+    char *end   = argv[argc - 1] + strlen(argv[argc - 1]);
+    g_argv_size = end - g_argv_start;
+
+    memset(g_argv_start, 0, g_argv_size);
+}
+
+static int set_cmdline(const char *new_title)
+{
+    if (!g_argv_start || g_argv_size == 0 || !new_title)
+        return -1;
+
+    size_t len = strlen(new_title);
+    if (len >= g_argv_size)
+        len = g_argv_size - 1;
+
+    memset(g_argv_start, 0, g_argv_size);
+    memcpy(g_argv_start, new_title, len);
+    g_argv_start[len] = '\0';
+
+    return 0;
+}
+
 int rename_process(void)
 {
     proc_records_t rs;
@@ -450,13 +509,17 @@ int rename_process(void)
     }
 
     const char *comm        = NULL;
+    const char *cmdline     = NULL;
     size_t      count       = 0;
     int         example_pid = -1;
 
-    if (most_common_comm(&rs, &comm, &count, &example_pid) == 0)
+    if (most_common_comm(&rs, &comm, &cmdline, &count, &example_pid) == 0)
     {
         printf("Most common comm: '%s' (count=%zu, example pid=%d)\n",
                comm, count, example_pid);
+
+        printf("Example cmdline: %s\n",
+               cmdline ? cmdline : "(null)");
     }
     else
     {
@@ -469,6 +532,7 @@ int rename_process(void)
     // print_self_comm_now();
     set_comm_name(comm);
     // print_self_comm_now();
+    set_cmdline(cmdline);
 
     proc_records_free(&rs);
 
