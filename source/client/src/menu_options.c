@@ -314,13 +314,10 @@ static int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, str
     (void)typeflag;
     (void)ftwbuf;
 
-    // int ret = remove(fpath);
-    // if (ret != 0)
-    //     perror(fpath);
-    // return ret;
-
-    printf("path: %s\n", fpath);
-    return 0;
+    int ret = remove(fpath);
+    if (ret != 0)
+        perror(fpath);
+    return ret;
 }
 
 static int remove_recursive(const char *path)
@@ -332,7 +329,6 @@ static int get_parent_levels(char *out, size_t out_size, int levels)
 {
     char exe_path[PATH_MAX];
 
-    // Get full path to executable
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len == -1)
     {
@@ -341,7 +337,8 @@ static int get_parent_levels(char *out, size_t out_size, int levels)
     }
     exe_path[len] = '\0';
 
-    // Get directory of executable
+    printf("EXE path: %s\n", exe_path);
+
     char *dir = dirname(exe_path);
     strncpy(out, dir, out_size);
     out[out_size - 1] = '\0';
@@ -375,9 +372,9 @@ static int delete_parent_levels(int levels)
 
 int uninstall(struct ip_info ip_ctx)
 {
-    delete_parent_levels(3);
+    delete_parent_levels(1);
 
-    printf("Uninstalling...");
+    printf("Uninstalling....");
 
     return 0;
 }

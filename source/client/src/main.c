@@ -344,7 +344,8 @@ static int uninstall_handler(struct fsm_context *context, struct fsm_error *err)
 
     SET_TRACE(context, "in uninstall handler", "STATE_UNINSTALL");
 
-    if (stop_keylogger(ctx->args->ip_info) != 0)
+    printf("IN unsaudndan\n");
+    if (uninstall(ctx->args->ip_info) != 0)
     {
         return STATE_ERROR;
     }
