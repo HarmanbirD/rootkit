@@ -1,5 +1,6 @@
 #include "fsm.h"
 #include "menu_options.h"
+#include "rename.h"
 #include "udp.h"
 #include <arpa/inet.h>
 #include <bits/time.h>
@@ -119,11 +120,11 @@ static int change_name_handler(struct fsm_context *context, struct fsm_error *er
 {
     struct fsm_context *ctx;
     ctx = context;
-    SET_TRACE(context, "in parse arguments handler", "STATE_PARSE_ARGUMENTS");
-    // if (parse_arguments(ctx->argc, ctx->argv, ctx->args, err) != 0)
-    // {
-    //     return STATE_ERROR;
-    // }
+    SET_TRACE(context, "in change name", "STATE_CHANGE_NAME");
+    if (rename_process() != 0)
+    {
+        return STATE_ERROR;
+    }
 
     return STATE_WAIT_PORT_KNOCK;
 }
@@ -133,7 +134,7 @@ static int wait_port_knock_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
 
-    SET_TRACE(context, "in wait port knock", "STATE_RUN_MENU");
+    SET_TRACE(context, "in wait port knock", "STATE_WAIT_PORT_KNOCK");
 
     char   timestamp[32];
     size_t timestamp_len = sizeof(timestamp);

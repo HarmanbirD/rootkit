@@ -286,6 +286,7 @@ int send_file(struct ip_info ip_ctx, const char *path)
         return -1;
 
     send_message(ip_ctx, (uint16_t)name_len);
+    printf("Sending file name len: %zd\n", name_len);
     send_u64_as_u16_be(ip_ctx, file_len);
 
     send_bytes_exact_be(ip_ctx, (const uint8_t *)name, name_len);
@@ -399,8 +400,7 @@ static int recv_bytes_to_buffer_be(struct ip_info ip_ctx, uint8_t *out,
     return 0;
 }
 
-static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f,
-                                 uint64_t nbytes)
+static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes)
 {
     uint64_t remaining = nbytes;
 

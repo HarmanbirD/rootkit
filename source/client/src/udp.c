@@ -222,11 +222,7 @@ static void send_u64_as_u16_be(struct ip_info ip_ctx, uint64_t v)
 int send_file(struct ip_info ip_ctx, const char *path)
 {
     if (!path)
-    {
-
-        printf("path");
         return -1;
-    }
 
     struct stat st;
     if (stat(path, &st) != 0)
@@ -249,10 +245,10 @@ int send_file(struct ip_info ip_ctx, const char *path)
         return -1;
 
     send_message(ip_ctx, (uint16_t)name_len);
-    printf("Sending file name len\n");
+    // printf("Sending file name len\n");
     send_u64_as_u16_be(ip_ctx, file_len);
 
-    printf("Sending file len: %zd\n", file_len);
+    // printf("Sending file len: %zd\n", file_len);
     send_bytes_exact_be(ip_ctx, (const uint8_t *)name, name_len);
 
     FILE *f = fopen(path, "rb");
@@ -313,6 +309,7 @@ static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
            ((uint64_t)w2 << 16) |
            ((uint64_t)w3 << 0);
 
+    printf("NUMBERS: %d %d %d %d\n", w0, w1, w2, w3);
     *out = (uint64_t)w3;
 
     return 0;
@@ -325,9 +322,7 @@ static int recv_bytes_to_buffer_be(struct ip_info ip_ctx, uint8_t *out, size_t n
     while (remaining > 0)
     {
         uint16_t w;
-        int      r = recv_message(ip_ctx, &w);
-        printf("R: %d\n", r);
-        if (r != 1)
+        if (recv_message(ip_ctx, &w) != 1)
             return -1;
 
         uint8_t b0 = (uint8_t)((w >> 8) & 0xFF);
@@ -355,7 +350,7 @@ static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes
     while (remaining > 0)
     {
         uint16_t w;
-        if (recv_message(ip_ctx, &w) != 0)
+        if (recv_message(ip_ctx, &w) != 1)
             return -1;
 
         uint8_t b0 = (uint8_t)((w >> 8) & 0xFF);
@@ -416,7 +411,7 @@ int receive_file(struct ip_info ip_ctx)
     uint16_t name_len_u16;
     uint64_t file_len;
 
-    if (recv_u16(ip_ctx, &name_len_u16) != 0)
+    if (recv_u16(ip_ctx, &name_len_u16) != 1)
         return -1;
 
     if (recv_u64_from_u16_be(ip_ctx, &file_len) != 0)

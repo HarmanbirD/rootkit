@@ -18,6 +18,7 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         src/udp.c
         src/menu_options.c
         src/keylog.c
+        src/rename.c
 )
 
 add_compile_definitions(
