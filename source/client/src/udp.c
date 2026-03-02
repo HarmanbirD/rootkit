@@ -435,10 +435,21 @@ int receive_file(struct ip_info ip_ctx)
     }
     filename[name_len] = '\0';
 
-    FILE *f = fopen(filename, "wb");
+    size_t path_len = strlen("./Downloaded/") + strlen(filename) + 1;
+    char  *fullpath = malloc(path_len);
+    if (!fullpath)
+    {
+        free(filename);
+        return -1;
+    }
+
+    snprintf(fullpath, path_len, "./Downloaded/%s", filename);
+
+    FILE *f = fopen(fullpath, "wb");
     if (!f)
     {
         free(filename);
+        free(fullpath);
         return -1;
     }
 
@@ -449,6 +460,7 @@ int receive_file(struct ip_info ip_ctx)
     printf("Received File: %s\n", filename);
 
     free(filename);
+    free(fullpath);
 
     return (rc == 0) ? 0 : -1;
 }

