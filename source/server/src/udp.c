@@ -69,7 +69,7 @@ uint32_t get_local_ip(uint32_t dest_ip)
 
 int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
 {
-    usleep(15000);
+    usleep(1500);
     char packet[4096];
     int  sock;
     memset(packet, 0, sizeof(packet));
@@ -133,7 +133,7 @@ int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
     return 0;
 }
 
-void print_udp_packet(unsigned char *buffer, ssize_t len)
+static void print_udp_packet(unsigned char *buffer, ssize_t len)
 {
     struct iphdr *ip            = (struct iphdr *)buffer;
     int           ip_header_len = ip->ihl * 4;
