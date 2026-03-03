@@ -440,6 +440,8 @@ int receive_file(struct ip_info ip_ctx)
 
     snprintf(fullpath, path_len, "./Downloaded/%s", filename);
 
+    mkdir("./Downloaded", 0755);
+
     FILE *f = fopen(fullpath, "wb");
     if (!f)
     {
