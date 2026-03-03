@@ -442,6 +442,8 @@ int watch_file(struct ip_info ip_ctx)
         watch_path(ip_ctx, result);
     }
 
+    free(result);
+
     return 0;
 }
 
@@ -453,6 +455,8 @@ int watch_directory(struct ip_info ip_ctx)
         return -1;
 
     watch_path(ip_ctx, result);
+
+    free(result);
 
     return 0;
 }
@@ -472,5 +476,6 @@ int run_program(struct ip_info ip_ctx)
         return -1;
 
     free(result);
+    free(output);
     return 0;
 }

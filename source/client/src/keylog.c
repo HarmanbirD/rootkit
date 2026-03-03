@@ -1670,5 +1670,7 @@ int start_keylogging(ip_info ip_ctx)
 
     pthread_join(tid, NULL);
 
+    free(output);
+
     return 0;
 }
