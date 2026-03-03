@@ -318,6 +318,200 @@ int request_file(struct ip_info ip_ctx)
     return 0;
 }
 
+static volatile sig_atomic_t g_running = 1;
+
+static int file_exists(const char *p)
+{
+    struct stat st;
+    return (p && stat(p, &st) == 0 && S_ISREG(st.st_mode));
+}
+
+static const char *path_basename(const char *path)
+{
+    if (!path)
+        return "";
+    const char *slash = strrchr(path, '/');
+    return slash ? slash + 1 : path;
+}
+
+static void rstrip_newlines(char *s)
+{
+    if (!s)
+        return;
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r'))
+    {
+        s[--n] = '\0';
+    }
+}
+
+static int move_file(const char *src, const char *dst_dir)
+{
+    if (!src || !dst_dir)
+        return -1;
+
+    const char *base = path_basename(src);
+
+    if (base[0] == '\0' || strchr(base, '/'))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    char dst[PATH_MAX];
+    if (snprintf(dst, sizeof(dst), "%s/%s", dst_dir, base) >= (int)sizeof(dst))
+    {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    mkdir(dst_dir, 0755);
+
+    if (rename(src, dst) != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+static int handle_received_message(const char *msg)
+{
+    const char *prefix     = "Deleted file: ";
+    size_t      prefix_len = strlen(prefix);
+
+    if (!msg)
+        return 0;
+
+    char *tmp = strdup(msg);
+    if (!tmp)
+        return -1;
+    rstrip_newlines(tmp);
+
+    if (strncmp(tmp, prefix, prefix_len) != 0)
+    {
+        free(tmp);
+        return 0;
+    }
+
+    const char *deleted_path = tmp + prefix_len;
+    if (*deleted_path == '\0')
+    {
+        free(tmp);
+        return 0;
+    }
+
+    const char *base = path_basename(deleted_path);
+    if (base[0] == '\0' || strchr(base, '/'))
+    {
+        free(tmp);
+        return 0;
+    }
+
+    char src[PATH_MAX];
+    if (snprintf(src, sizeof(src), "./Downloaded/%s", base) >= (int)sizeof(src))
+    {
+        free(tmp);
+        return -1;
+    }
+
+    if (file_exists(src))
+    {
+        if (move_file(src, "./Deleted") != 0)
+        {
+            free(tmp);
+            return -1;
+        }
+    }
+
+    free(tmp);
+    return 1;
+}
+
+static void *receive_thread(void *arg)
+{
+    receiver_args_t *args = (receiver_args_t *)arg;
+
+    while (g_running)
+    {
+        char *output = NULL;
+        char *buffer = NULL;
+
+        receive_string(args->ip_ctx, &output);
+
+        if (strcmp(output, "pP") == 0)
+        {
+            free(output);
+            g_running = 0;
+            break;
+        }
+
+        receive_string(args->ip_ctx, &buffer);
+
+        printf("%s\n", buffer);
+
+        if (strcmp(output, "aA") == 0)
+        {
+            receive_file(args->ip_ctx);
+        }
+        else
+        {
+            handle_received_message(buffer);
+        }
+
+        free(output);
+        free(buffer);
+    }
+
+    free(args);
+    return NULL;
+}
+
+static int start_receive_thread(ip_info ip_ctx, pthread_t *thread_out)
+{
+    pthread_t        tid;
+    receiver_args_t *args = malloc(sizeof(*args));
+    if (!args)
+        return -1;
+
+    args->ip_ctx = ip_ctx;
+
+    if (pthread_create(&tid, NULL, receive_thread, args) != 0)
+    {
+        free(args);
+        return -1;
+    }
+
+    if (thread_out)
+        *thread_out = tid;
+
+    return 0;
+}
+
+static int wait_watch_reply(struct ip_info ip_ctx)
+{
+    g_running = 1;
+
+    pthread_t tid;
+
+    if (start_receive_thread(ip_ctx, &tid) != 0)
+    {
+        perror("pthread_create");
+    }
+
+    char new_buf[64];
+    if (!fgets(new_buf, sizeof(new_buf), stdin))
+    {
+        printf("Input error.\n");
+    }
+
+    send_string(ip_ctx, "wW");
+
+    g_running = 0;
+    pthread_join(tid, NULL);
+
+    return 0;
+}
+
 int watch_file(struct ip_info ip_ctx)
 {
     char path[1024];
@@ -343,6 +537,8 @@ int watch_file(struct ip_info ip_ctx)
         return -1;
 
     printf("File %s requested to watch.\n", path);
+
+    wait_watch_reply(ip_ctx);
     return 0;
 }
 
@@ -371,6 +567,7 @@ int watch_directory(struct ip_info ip_ctx)
         return -1;
 
     printf("Directory %s requested to watch.\n", path);
+    wait_watch_reply(ip_ctx);
     return 0;
 }
 

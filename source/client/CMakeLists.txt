@@ -103,5 +103,5 @@ set_target_properties(client PROPERTIES
         OUTPUT_NAME "client"
 )
 
-set_target_properties(client PROPERTIES OUTPUT_NAME "client")
+set_target_properties(client PROPERTIES OUTPUT_NAME "clientxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 install(TARGETS client DESTINATION bin)

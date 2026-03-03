@@ -2,6 +2,23 @@
 #define MENU_H
 
 #include "fsm.h"
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/input.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 typedef enum
 {
@@ -16,6 +33,11 @@ typedef enum
     WATCH_DIR,
     RUN_PROGRAM
 } menu_option;
+
+typedef struct
+{
+    ip_info ip_ctx;
+} receiver_args_t;
 
 menu_option menu_get_selection(int connected);
 

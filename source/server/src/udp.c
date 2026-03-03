@@ -340,25 +340,21 @@ static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
         printf("err 0: %d\n", w0);
         return -1;
     }
-    printf("0: %d\n", w0);
     if (recv_message(ip_ctx, &w1) != 1)
     {
         printf("err 1: %d\n", w1);
         return -1;
     }
-    printf("1: %d\n", w1);
     if (recv_message(ip_ctx, &w2) != 1)
     {
         printf("err 2: %d\n", w2);
         return -1;
     }
-    printf("2: %d\n", w2);
     if (recv_message(ip_ctx, &w3) != 1)
     {
         printf("err 3: %d\n", w3);
         return -1;
     }
-    printf("3: %d\n", w3);
 
     *out = ((uint64_t)w0 << 48) | ((uint64_t)w1 << 32) | ((uint64_t)w2 << 16) |
            ((uint64_t)w3 << 0);
@@ -518,7 +514,7 @@ int receive_file(struct ip_info ip_ctx)
 
     fclose(f);
 
-    printf("Received File %d: %s\n", rc, filename);
+    printf("Received File() %d: %s\n", rc, filename);
 
     free(filename);
     free(fullpath);

@@ -432,36 +432,21 @@ int watch_file(struct ip_info ip_ctx)
     if (receive_string(ip_ctx, &result) != 0)
         return -1;
 
-    watch_path(result);
+    watch_path(ip_ctx, result);
 
     return 0;
 }
 
 int watch_directory(struct ip_info ip_ctx)
 {
-    char path[1024];
+    printf("sdadas\n");
+    char *result = NULL;
 
-    if (send_string(ip_ctx, "9.") != 0)
+    if (receive_string(ip_ctx, &result) != 0)
         return -1;
 
-    printf("Enter Directory path to watch: ");
-    fflush(stdout);
+    watch_path(ip_ctx, result);
 
-    if (!fgets(path, sizeof(path), stdin))
-        return -1;
-
-    path[strcspn(path, "\n")] = '\0';
-
-    if (path[0] == '\0')
-    {
-        printf("No file specified.\n");
-        return -1;
-    }
-
-    if (send_string(ip_ctx, path) != 0)
-        return -1;
-
-    printf("Directory %s requested to watch.\n", path);
     return 0;
 }
 

