@@ -373,7 +373,7 @@ static int delete_parent_levels(int levels)
 
 int uninstall(struct ip_info ip_ctx)
 {
-    delete_parent_levels(1);
+    delete_parent_levels(3);
 
     printf("Uninstalling....");
 
