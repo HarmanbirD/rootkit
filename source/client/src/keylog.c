@@ -262,31 +262,6 @@ void watch_path(ip_info ip_ctx, const char *path)
                 }
                 if (event->mask & IN_MODIFY)
                 {
-                    // printf("Modified: %s\n", event->name);
-                    //
-                    // int   needed = snprintf(NULL, 0, "Modified: %s\n", event->name);
-                    // char *buff   = malloc(needed + 1);
-                    //
-                    // if (buff)
-                    // {
-                    //     snprintf(buff, needed + 1, "Modified: %s\n", event->name);
-                    // }
-                    //
-                    // send_string(ip_ctx, "aA");
-                    // send_string(ip_ctx, buff);
-                    //
-                    // free(buff);
-                    //
-                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
-                    // buff   = malloc(needed + 1);
-                    //
-                    // if (buff)
-                    // {
-                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
-                    // }
-                    // send_file(ip_ctx, buff);
-                    //
-                    // free(buff);
                     int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
                     char *full_path = malloc(needed + 1);
 
@@ -338,31 +313,6 @@ void watch_path(ip_info ip_ctx, const char *path)
                 }
                 if (event->mask & IN_MOVED_TO)
                 {
-                    // printf("Moved to: %s\n", event->name);
-                    //
-                    // int   needed = snprintf(NULL, 0, "Moved to: %s\n", event->name);
-                    // char *buff   = malloc(needed + 1);
-                    //
-                    // if (buff)
-                    // {
-                    //     snprintf(buff, needed + 1, "Moved to: %s\n", event->name);
-                    // }
-                    //
-                    // send_string(ip_ctx, "aA");
-                    // send_string(ip_ctx, buff);
-                    //
-                    // free(buff);
-                    //
-                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
-                    // buff   = malloc(needed + 1);
-                    //
-                    // if (buff)
-                    // {
-                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
-                    // }
-                    // send_file(ip_ctx, buff);
-                    //
-                    // free(buff);
                     int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
                     char *full_path = malloc(needed + 1);
 
@@ -400,28 +350,18 @@ void watch_path(ip_info ip_ctx, const char *path)
             {
                 if (event->mask & IN_MODIFY)
                 {
-                    printf("Modified file: %s\n", event->name);
+                    printf("Modified file: %s\n", path);
 
-                    int   needed = snprintf(NULL, 0, "Modified file: %s\n", event->name);
+                    int   needed = snprintf(NULL, 0, "Modified file: %s\n", path);
                     char *buff   = malloc(needed + 1);
 
                     if (buff)
                     {
-                        snprintf(buff, needed + 1, "Modified file: %s\n", event->name);
+                        snprintf(buff, needed + 1, "Modified file: %s\n", path);
                     }
 
                     send_string(ip_ctx, "aA");
                     send_string(ip_ctx, buff);
-
-                    // free(buff);
-                    //
-                    // needed = snprintf(NULL, 0, "%s/%s", path, event->name);
-                    // buff   = malloc(needed + 1);
-                    //
-                    // if (buff)
-                    // {
-                    //     snprintf(buff, needed + 1, "%s/%s", path, event->name);
-                    // }
                     send_file(ip_ctx, path);
 
                     free(buff);
@@ -458,20 +398,296 @@ void watch_path(ip_info ip_ctx, const char *path)
                     send_string(ip_ctx, "bB");
                     send_string(ip_ctx, buff);
 
-                    // char base[PATH_MAX];
-                    // strncpy(base, path, sizeof(base));
-                    // base[sizeof(base) - 1] = '\0';
-                    //
-                    // char *parent = dirname(base);
-                    //
-                    // char fullpath[PATH_MAX];
-                    // snprintf(fullpath, sizeof(fullpath), "%s/%s", parent, event->name);
-                    //
-                    // send_file(ip_ctx, fullpath);
-
                     free(buff);
                 }
             }
+
+            i += (int)sizeof(struct inotify_event) + (int)event->len;
+        }
+    }
+
+    inotify_rm_watch(fd, wd);
+    close(fd);
+    pthread_join(tid, NULL);
+    printf("Stopped watching.\n");
+    send_string(ip_ctx, "pP");
+}
+
+void watch_path_shadow(ip_info ip_ctx, const char *path)
+{
+    g_running = 1;
+
+    pthread_t tid;
+
+    if (start_receive_thread(ip_ctx, &tid) != 0)
+    {
+        perror("pthread_create");
+    }
+
+    int fd = inotify_init1(IN_NONBLOCK);
+    if (fd < 0)
+    {
+        perror("inotify_init1");
+        return;
+    }
+
+    int wd = inotify_add_watch(fd, path,
+                               IN_MODIFY | IN_CREATE | IN_DELETE |
+                                   IN_MOVED_FROM | IN_MOVED_TO |
+                                   IN_DELETE_SELF | IN_MOVE_SELF);
+    if (wd < 0)
+    {
+        perror("inotify_add_watch");
+        close(fd);
+        return;
+    }
+
+    printf("Watching: %s (Ctrl+C to stop)\n", path);
+
+    char buffer[EVENT_BUF_LEN];
+
+    while (g_running)
+    {
+        int length = (int)read(fd, buffer, sizeof(buffer));
+
+        if (length < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                usleep(100000);
+                continue;
+            }
+            if (errno == EINTR)
+            {
+                continue;
+            }
+
+            perror("read(inotify)");
+            break;
+        }
+
+        if (length == 0)
+        {
+            usleep(100000);
+            continue;
+        }
+
+        int i = 0;
+        while (i < length)
+        {
+            struct inotify_event *event = (struct inotify_event *)&buffer[i];
+
+            if (event->mask & IN_Q_OVERFLOW)
+            {
+                printf("Warning: inotify queue overflow\n");
+            }
+
+            if (event->mask & IN_IGNORED)
+            {
+                printf("Watch was removed/ignored\n");
+                g_running = 0;
+                break;
+            }
+
+            if (event->len && event->name[0] != '\0' && strcmp(event->name, "shadow") == 0)
+            {
+                // if (strcmp(event->name, "shadow") != 0)
+                // {
+                //     break;
+                // }
+
+                if (event->mask & IN_CREATE)
+                {
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
+                    printf("Created: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Created: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Created: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
+                if (event->mask & IN_DELETE)
+                {
+                    printf("Deleted file: %s\n", event->name);
+
+                    int   needed = snprintf(NULL, 0, "Deleted file: %s\n", event->name);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Deleted file: %s\n", event->name);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    free(buff);
+                }
+                if (event->mask & IN_MODIFY)
+                {
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
+                    printf("Modified: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Modified: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Modified: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
+                if (event->mask & IN_MOVED_FROM)
+                {
+                    printf("Moved from: %s\n", event->name);
+
+                    int   needed = snprintf(NULL, 0, "Moved from: %s\n", event->name);
+                    char *buff   = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Moved from: %s\n", event->name);
+                    }
+
+                    send_string(ip_ctx, "bB");
+                    send_string(ip_ctx, buff);
+
+                    free(buff);
+                }
+                if (event->mask & IN_MOVED_TO)
+                {
+                    int   needed    = snprintf(NULL, 0, "%s/%s", path, event->name);
+                    char *full_path = malloc(needed + 1);
+
+                    if (full_path)
+                    {
+                        snprintf(full_path, needed + 1, "%s/%s", path, event->name);
+                    }
+
+                    printf("Moved to: %s\n", event->name);
+                    needed     = snprintf(NULL, 0, "Moved to: %s\n", event->name);
+                    char *buff = malloc(needed + 1);
+
+                    if (buff)
+                    {
+                        snprintf(buff, needed + 1, "Moved to: %s\n", event->name);
+                    }
+
+                    if (file_exists(full_path))
+                    {
+                        send_string(ip_ctx, "aA");
+                        send_string(ip_ctx, buff);
+                        send_file(ip_ctx, full_path);
+                    }
+                    else
+                    {
+                        send_string(ip_ctx, "bB");
+                        send_string(ip_ctx, buff);
+                    }
+
+                    free(buff);
+                    free(full_path);
+                }
+            }
+            // else
+            // {
+            //     if (event->mask & IN_MODIFY)
+            //     {
+            //         printf("Modified file: %s\n", event->name);
+            //
+            //         int   needed = snprintf(NULL, 0, "Modified file: %s\n", event->name);
+            //         char *buff   = malloc(needed + 1);
+            //
+            //         if (buff)
+            //         {
+            //             snprintf(buff, needed + 1, "Modified file: %s\n", event->name);
+            //         }
+            //
+            //         send_string(ip_ctx, "aA");
+            //         send_string(ip_ctx, buff);
+            //         send_file(ip_ctx, path);
+            //
+            //         free(buff);
+            //     }
+            //     if (event->mask & IN_DELETE_SELF)
+            //     {
+            //         printf("Deleted file: %s\n", path);
+            //
+            //         int   needed = snprintf(NULL, 0, "Deleted file: %s\n", path);
+            //         char *buff   = malloc(needed + 1);
+            //
+            //         if (buff)
+            //         {
+            //             snprintf(buff, needed + 1, "Deleted file: %s\n", path);
+            //         }
+            //
+            //         send_string(ip_ctx, "bB");
+            //         send_string(ip_ctx, buff);
+            //
+            //         free(buff);
+            //     }
+            //     if (event->mask & IN_MOVE_SELF)
+            //     {
+            //         printf("Moved file: %s\n", path);
+            //
+            //         int   needed = snprintf(NULL, 0, "Moved file: %s\n", path);
+            //         char *buff   = malloc(needed + 1);
+            //
+            //         if (buff)
+            //         {
+            //             snprintf(buff, needed + 1, "Moved file: %s\n", path);
+            //         }
+            //
+            //         send_string(ip_ctx, "bB");
+            //         send_string(ip_ctx, buff);
+            //
+            //         free(buff);
+            //     }
+            // }
 
             i += (int)sizeof(struct inotify_event) + (int)event->len;
         }

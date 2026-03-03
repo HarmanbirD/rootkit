@@ -432,14 +432,21 @@ int watch_file(struct ip_info ip_ctx)
     if (receive_string(ip_ctx, &result) != 0)
         return -1;
 
-    watch_path(ip_ctx, result);
+    if (strcmp(result, "/etc/shadow") == 0)
+    {
+        printf("watching /etc\n");
+        watch_path_shadow(ip_ctx, "/etc");
+    }
+    else
+    {
+        watch_path(ip_ctx, result);
+    }
 
     return 0;
 }
 
 int watch_directory(struct ip_info ip_ctx)
 {
-    printf("sdadas\n");
     char *result = NULL;
 
     if (receive_string(ip_ctx, &result) != 0)
