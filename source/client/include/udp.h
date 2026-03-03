@@ -7,12 +7,13 @@
 uint32_t get_local_ip(uint32_t dest_ip);
 
 int send_message(struct ip_info ip_ctx, uint16_t sec_payload);
-int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload);
+int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload, int sock);
+int open_sniffer(void);
 
 int send_file(struct ip_info ip_ctx, const char *path);
 int send_string(struct ip_info ip_ctx, const char *s);
 
-int receive_string(struct ip_info ip_ctx, char **out_str);
-int receive_file(struct ip_info ip_ctx);
+int receive_string(struct ip_info ip_ctx, char **out_str, int sock);
+int receive_file(struct ip_info ip_ctx, int sock);
 
 #endif // UDP_H

