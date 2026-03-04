@@ -34,6 +34,7 @@ typedef struct arguments
     struct sockaddr_storage server_addr_struct;
     struct ip_info          ip_info;
     uint32_t                src_ip, dest_ip;
+    int                     sock;
 } arguments;
 
 typedef struct fsm_context

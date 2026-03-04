@@ -23,7 +23,7 @@ static unsigned short checksum(void *b, int len)
     {
         sum += *(unsigned char *)buf;
     }
-    sum = (sum >> 16) + (sum & 0xFFFF);
+    sum  = (sum >> 16) + (sum & 0xFFFF);
     sum += (sum >> 16);
     return (unsigned short)(~sum);
 }
@@ -32,7 +32,7 @@ uint32_t get_local_ip(uint32_t dest_ip)
 {
     uint32_t result = 0;
 
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    int      sock   = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
     {
         perror("socket");
@@ -180,17 +180,22 @@ static void print_udp_packet(unsigned char *buffer, ssize_t len)
     printf("\n===========================\n");
 }
 
-int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
+int open_sniffer(void)
 {
-    if (!sec_payload)
-        return 0;
-
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (sock < 0)
     {
         perror("socket");
-        return 0;
+        return -1;
     }
+
+    return sock;
+}
+
+int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload, int sock)
+{
+    if (!sec_payload)
+        return 0;
 
     unsigned char buffer[65536];
 
@@ -203,9 +208,9 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
         if ((size_t)len < sizeof(struct iphdr))
             continue;
 
-        struct iphdr *ip = (struct iphdr *)buffer;
+        struct iphdr *ip            = (struct iphdr *)buffer;
 
-        size_t ip_header_len = ip->ihl * 4;
+        size_t        ip_header_len = ip->ihl * 4;
         if (ip_header_len < sizeof(struct iphdr) ||
             (size_t)len < ip_header_len + sizeof(struct udphdr))
             continue;
@@ -227,7 +232,6 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
 
         // print_udp_packet(buffer, len);
 
-        close(sock);
         return 1;
     }
 }
@@ -277,7 +281,7 @@ int send_file(struct ip_info ip_ctx, const char *path)
     if (!S_ISREG(st.st_mode))
         return -1;
 
-    uint64_t file_len = (uint64_t)st.st_size;
+    uint64_t    file_len = (uint64_t)st.st_size;
 
     const char *name     = path_basename(path);
     size_t      name_len = strlen(name);
@@ -326,31 +330,31 @@ int send_string(struct ip_info ip_ctx, const char *s)
     return 0;
 }
 
-static int recv_u16(struct ip_info ip_ctx, uint16_t *out)
+static int recv_u16(struct ip_info ip_ctx, uint16_t *out, int sock)
 {
-    return recv_message(ip_ctx, out);
+    return recv_message(ip_ctx, out, sock);
 }
 
-static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
+static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out, int sock)
 {
     uint16_t w0, w1, w2, w3;
 
-    if (recv_message(ip_ctx, &w0) != 1)
+    if (recv_message(ip_ctx, &w0, sock) != 1)
     {
         printf("err 0: %d\n", w0);
         return -1;
     }
-    if (recv_message(ip_ctx, &w1) != 1)
+    if (recv_message(ip_ctx, &w1, sock) != 1)
     {
         printf("err 1: %d\n", w1);
         return -1;
     }
-    if (recv_message(ip_ctx, &w2) != 1)
+    if (recv_message(ip_ctx, &w2, sock) != 1)
     {
         printf("err 2: %d\n", w2);
         return -1;
     }
-    if (recv_message(ip_ctx, &w3) != 1)
+    if (recv_message(ip_ctx, &w3, sock) != 1)
     {
         printf("err 3: %d\n", w3);
         return -1;
@@ -366,14 +370,14 @@ static int recv_u64_from_u16_be(struct ip_info ip_ctx, uint64_t *out)
 }
 
 static int recv_bytes_to_buffer_be(struct ip_info ip_ctx, uint8_t *out,
-                                   size_t nbytes)
+                                   size_t nbytes, int sock)
 {
     size_t remaining = nbytes;
 
     while (remaining > 0)
     {
         uint16_t w;
-        if (recv_message(ip_ctx, &w) != 1)
+        if (recv_message(ip_ctx, &w, sock) != 1)
             return -1;
 
         uint8_t b0 = (uint8_t)((w >> 8) & 0xFF);
@@ -394,14 +398,14 @@ static int recv_bytes_to_buffer_be(struct ip_info ip_ctx, uint8_t *out,
     return 0;
 }
 
-static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes)
+static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes, int sock)
 {
     uint64_t remaining = nbytes;
 
     while (remaining > 0)
     {
         uint16_t w;
-        if (recv_message(ip_ctx, &w) != 1)
+        if (recv_message(ip_ctx, &w, sock) != 1)
             return -1;
 
         uint8_t b0 = (uint8_t)((w >> 8) & 0xFF);
@@ -424,7 +428,7 @@ static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes
     return 0;
 }
 
-int receive_string(struct ip_info ip_ctx, char **out_str)
+int receive_string(struct ip_info ip_ctx, char **out_str, int sock)
 {
     if (!out_str)
         return -1;
@@ -437,7 +441,7 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
     *out_str = NULL;
 
     uint64_t len;
-    if (recv_u64_from_u16_be(ip_ctx, &len) != 0)
+    if (recv_u64_from_u16_be(ip_ctx, &len, sock) != 0)
         return -1;
 
     if (len > (1024ull * 1024ull * 64ull))
@@ -450,7 +454,7 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
         return -1;
     }
 
-    if (recv_bytes_to_buffer_be(ip_ctx, (uint8_t *)buf, (size_t)len) != 0)
+    if (recv_bytes_to_buffer_be(ip_ctx, (uint8_t *)buf, (size_t)len, sock) != 0)
     {
         printf("recvs error");
         free(buf);
@@ -463,27 +467,27 @@ int receive_string(struct ip_info ip_ctx, char **out_str)
     return 0;
 }
 
-int receive_file(struct ip_info ip_ctx)
+int receive_file(struct ip_info ip_ctx, int sock)
 {
     uint16_t name_len_u16;
     uint64_t file_len;
 
-    if (recv_u16(ip_ctx, &name_len_u16) != 1)
+    if (recv_u16(ip_ctx, &name_len_u16, sock) != 1)
         return -1;
     // printf("name len: %d\n", name_len_u16);
 
-    if (recv_u64_from_u16_be(ip_ctx, &file_len) != 0)
+    if (recv_u64_from_u16_be(ip_ctx, &file_len, sock) != 0)
         return -1;
 
     // printf("file len: %zd\n", file_len);
 
     size_t name_len = (size_t)name_len_u16;
 
-    char *filename = (char *)malloc(name_len + 1);
+    char  *filename = (char *)malloc(name_len + 1);
     if (!filename)
         return -1;
 
-    if (recv_bytes_to_buffer_be(ip_ctx, (uint8_t *)filename, name_len) != 0)
+    if (recv_bytes_to_buffer_be(ip_ctx, (uint8_t *)filename, name_len, sock) != 0)
     {
         free(filename);
         return -1;
@@ -492,8 +496,8 @@ int receive_file(struct ip_info ip_ctx)
 
     // printf("filename: %s\n", filename);
 
-    size_t path_len = strlen("./Downloaded/") + strlen(filename) + 1;
-    char  *fullpath = malloc(path_len);
+    size_t path_len    = strlen("./Downloaded/") + strlen(filename) + 1;
+    char  *fullpath    = malloc(path_len);
     if (!fullpath)
     {
         free(filename);
@@ -512,7 +516,7 @@ int receive_file(struct ip_info ip_ctx)
         return -1;
     }
 
-    int rc = recv_bytes_to_file_be(ip_ctx, f, file_len);
+    int rc = recv_bytes_to_file_be(ip_ctx, f, file_len, sock);
 
     fclose(f);
 
