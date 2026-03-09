@@ -1,4 +1,4 @@
-#include "udp.h"
+#include "udp.h" udp
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -180,11 +180,8 @@ static void print_udp_packet(unsigned char *buffer, ssize_t len)
     printf("\n===========================\n");
 }
 
-int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
+int open_sniffer(void)
 {
-    if (!sec_payload)
-        return 0;
-
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (sock < 0)
     {
@@ -192,11 +189,19 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
         return 0;
     }
 
+    return sock;
+}
+
+int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
+{
+    if (!sec_payload)
+        return 0;
+
     unsigned char buffer[65536];
 
     while (1)
     {
-        ssize_t len = recvfrom(sock, buffer, sizeof(buffer), 0, NULL, NULL);
+        ssize_t len = recvfrom(ip_ctx.sock, buffer, sizeof(buffer), 0, NULL, NULL);
         if (len <= 0)
             continue;
 
@@ -227,7 +232,6 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
 
         // print_udp_packet(buffer, len);
 
-        close(sock);
         return 1;
     }
 }
@@ -389,6 +393,8 @@ static int recv_bytes_to_buffer_be(struct ip_info ip_ctx, uint8_t *out,
             *out++ = b1;
             remaining--;
         }
+
+        printf("Remaining/Total: %zd/%zd\n", remaining, nbytes);
     }
 
     return 0;
@@ -419,6 +425,8 @@ static int recv_bytes_to_file_be(struct ip_info ip_ctx, FILE *f, uint64_t nbytes
                 return -1;
             remaining--;
         }
+
+        printf("Remaining/Total: %zd/%zd\n", remaining, nbytes);
     }
 
     return 0;

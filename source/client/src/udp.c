@@ -138,11 +138,8 @@ int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
     return 0;
 }
 
-int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
+int open_sniffer(void)
 {
-    if (!sec_payload)
-        return -1;
-
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (sock < -1)
     {
@@ -150,11 +147,19 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
         return -1;
     }
 
+    return sock;
+}
+
+int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
+{
+    if (!sec_payload)
+        return -1;
+
     unsigned char buffer[65536];
 
     while (1)
     {
-        ssize_t len = recvfrom(sock, buffer, sizeof(buffer), 0, NULL, NULL);
+        ssize_t len = recvfrom(ip_ctx.sock, buffer, sizeof(buffer), 0, NULL, NULL);
         if (len <= 0)
             continue;
 
@@ -184,7 +189,6 @@ int recv_message(struct ip_info ip_ctx, uint16_t *sec_payload)
 
         printf("Recieved: %d\n", *sec_payload);
 
-        close(sock);
         return 1;
     }
 }

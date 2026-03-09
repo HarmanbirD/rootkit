@@ -15,4 +15,6 @@ int send_string(struct ip_info ip_ctx, const char *s);
 int receive_string(struct ip_info ip_ctx, char **out_str);
 int receive_file(struct ip_info ip_ctx);
 
+int open_sniffer(void);
+
 #endif // UDP_H

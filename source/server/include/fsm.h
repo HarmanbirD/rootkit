@@ -24,6 +24,7 @@ typedef struct ip_info
 {
     uint32_t local_ip, dest_ip;
     int      src_port, dest_port;
+    int      sock;
 } ip_info;
 
 typedef struct arguments

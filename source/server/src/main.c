@@ -1,6 +1,7 @@
 #include "command_line.h"
 #include "fsm.h"
 #include "menu.h"
+#include "udp.h"
 #include "utils.h"
 #include <pthread.h>
 #include <signal.h>
@@ -197,6 +198,8 @@ static int run_port_knock_handler(struct fsm_context *context, struct fsm_error 
 
     SET_TRACE(context, "in run port knock handler", "STATE_RUN_PORT_KNOCK");
 
+    ctx->args->ip_info.sock = open_sniffer();
+
     if (port_knock(&ctx->args->ip_info) != -1)
     {
         ctx->args->connected = 1;
@@ -349,6 +352,8 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
 
     fsm_error_clear(err);
+
+    close(ctx->args->ip_info.sock);
 
     return FSM_EXIT;
 }
