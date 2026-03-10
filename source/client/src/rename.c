@@ -338,7 +338,7 @@ static int most_common_comm(const proc_records_t *rs,
     size_t n = 0;
     for (size_t i = 0; i < rs->len; i++)
     {
-        if (rs->items[i].comm && rs->items[i].comm[0] != '\0')
+        if (rs->items[i].comm && rs->items[i].comm[0] != '\0' && rs->items[i].cmdline)
         {
             refs[n].comm = rs->items[i].comm;
             refs[n].pid  = rs->items[i].pid;
