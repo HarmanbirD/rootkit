@@ -69,7 +69,7 @@ uint32_t get_local_ip(uint32_t dest_ip)
 
 int send_message(struct ip_info ip_ctx, uint16_t sec_payload)
 {
-    usleep(1500);
+    // usleep(1500);
     char packet[4096];
     int  sock;
     memset(packet, 0, sizeof(packet));
